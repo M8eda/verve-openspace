@@ -1,0 +1,52 @@
+{
+  "name": "verve-website",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A cinematic Next.js agency website where Verve services become a scroll-driven 3D solar system.",
+  "homepage": "https://verve-marketing.space/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/M8eda/verve-openspace.git"
+  },
+  "bugs": {
+    "url": "https://github.com/M8eda/verve-openspace/issues"
+  },
+  "keywords": [
+    "nextjs",
+    "react",
+    "threejs",
+    "react-three-fiber",
+    "webgl",
+    "digital-agency",
+    "verve"
+  ],
+  "author": "Verve",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.0.0",
+    "@react-three/postprocessing": "^3.1.2",
+    "lenis": "^1.1.0",
+    "next": "^16.0.0",
+    "postprocessing": "^6.39.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.180.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}

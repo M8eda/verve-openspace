@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+
+# logs / OS
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# reference material captured from other sites (never commit)
+research/
