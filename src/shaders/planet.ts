@@ -908,6 +908,7 @@ void main() {
 
   float diffuse = max(dot(N, uLightDir), 0.0);
   diffuse = pow(diffuse, 0.85);
+  float lit = min(diffuse * 1.12, 1.0);
 
   float ambient = 0.015;
   vec3 surfaceColor = customColor ? finalSurface : palette(clamp(t, 0.0, 1.0), uColor, uAccent);
@@ -915,8 +916,8 @@ void main() {
   float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * max(dot(N, uLightDir), 0.0);
 
   vec3 color = customColor
-    ? surfaceColor * (diffuse * 0.9 + 0.05) + uAccent * rim * 0.4
-    : surfaceColor * (diffuse + ambient) + uAccent * rim * 0.4;
+    ? surfaceColor * (lit * 0.9 + 0.05) + uAccent * rim * 0.4
+    : surfaceColor * (lit + ambient) + uAccent * rim * 0.4;
 
   // Output in linear space; ToneMapping pass in EffectComposer handles final ACES compression
   gl_FragColor = vec4(color, 1.0);
