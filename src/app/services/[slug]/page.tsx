@@ -1,8 +1,10 @@
 import Link from "next/link";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import MissionControlButton from "@/components/MissionControlButton";
 import { getServiceBySlug, services } from "@/data/services";
+import { defaultOgImage, serviceJsonLd, serviceKeywords, serviceUrl, siteName } from "@/lib/seo";
 
 type Params = Promise<{ slug: string }>;
 
@@ -14,9 +16,32 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { slug } = await params;
   const service = getServiceBySlug(slug);
   if (!service) return {};
+  const title = `${service.name} — Verve Digital Agency`;
+  const url = serviceUrl(service.slug);
+
   return {
-    title: `${service.name} — Verve`,
+    title: {
+      absolute: title,
+    },
     description: service.description,
+    keywords: serviceKeywords(service.name),
+    alternates: {
+      canonical: `/services/${service.slug}`,
+    },
+    openGraph: {
+      type: "website",
+      url,
+      siteName,
+      title,
+      description: service.description,
+      images: [defaultOgImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: service.description,
+      images: [defaultOgImage],
+    },
   };
 }
 
@@ -27,9 +52,20 @@ export default async function ServicePage({ params }: { params: Params }) {
 
   const total = services.length;
   const forceTag = service.index <= 4 ? "IGNITE" : service.index <= 7 ? "PULL" : "SUSTAIN";
+  const structuredData = serviceJsonLd(slug);
 
   return (
     <article className="service-page">
+      {structuredData ? (
+        <Script
+          id={`service-structured-data-${service.slug}`}
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+          }}
+        />
+      ) : null}
       <Link href="/" className="service-back">
         &larr; Back to the system
       </Link>

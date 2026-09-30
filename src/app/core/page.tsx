@@ -1,10 +1,33 @@
 import type { Metadata } from "next";
 import MissionControlButton from "@/components/MissionControlButton";
+import { defaultOgImage, siteName } from "@/lib/seo";
+
+const title = "The Core — About Verve";
+const description =
+  "Meet Verve, the digital agency that builds brand, web, and growth systems your market orbits. Strategy, creative, platform, and performance under one roof.";
 
 export const metadata: Metadata = {
-  title: "The Core — About Verve",
-  description:
-    "The energy at the center of it all. Meet Verve, the studio that builds the systems your market orbits. Own your space.",
+  title: {
+    absolute: title,
+  },
+  description,
+  alternates: {
+    canonical: "/core",
+  },
+  openGraph: {
+    type: "website",
+    url: "/core",
+    siteName,
+    title,
+    description,
+    images: [defaultOgImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: [defaultOgImage],
+  },
 };
 
 export default function CorePage() {

@@ -1,9 +1,36 @@
+import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import DebugHud from "@/components/DebugHud";
 import JourneyCaptions from "@/components/JourneyCaptions";
 import JourneyTimeline from "@/components/JourneyTimeline";
 import JourneyPager from "@/components/JourneyPager";
 import { services } from "@/data/services";
+import { defaultDescription, defaultOgImage, defaultTitle, seoKeywords, siteName } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: defaultTitle,
+  },
+  description: defaultDescription,
+  keywords: seoKeywords,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName,
+    title: defaultTitle,
+    description: defaultDescription,
+    images: [defaultOgImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: defaultTitle,
+    description: defaultDescription,
+    images: [defaultOgImage],
+  },
+};
 
 type AssemblyWordStyle = CSSProperties & { "--idx": number };
 

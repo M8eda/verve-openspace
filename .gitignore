@@ -1,20 +1,53 @@
 # dependencies
 node_modules/
+.pnp
+.pnp.*
 
 # next.js
 .next/
 out/
+build/
+dist/
 next-env.d.ts
 *.tsbuildinfo
 
-# env
+# production / hosting
+.vercel/
+.netlify/
+
+# env / secrets
 .env
 .env.*
+!.env.example
+!.env.local.example
 
-# logs / OS
+# logs
+logs/
+*.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# tests / coverage
+coverage/
+.nyc_output/
+
+# caches
+.cache/
+.turbo/
+.eslintcache
+
+# editor / OS
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# local Claude Code workspace and instructions
+.claude/
+CLAUDE.md
 
 # reference material captured from other sites (never commit)
 research/

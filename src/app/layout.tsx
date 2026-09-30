@@ -8,6 +8,16 @@ import Loader from "@/components/Loader";
 import SceneRoot from "@/components/SceneRoot";
 import SceneVisibility from "@/components/SceneVisibility";
 import SmoothScroll from "@/components/SmoothScroll";
+import {
+  defaultDescription,
+  defaultOgImage,
+  defaultTitle,
+  organizationJsonLd,
+  seoKeywords,
+  siteName,
+  siteUrl,
+  websiteJsonLd,
+} from "@/lib/seo";
 import "./globals.css";
 
 const sans = Bricolage_Grotesque({
@@ -17,9 +27,42 @@ const sans = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "Verve — Digital Agency",
-  description:
-    "Nine capabilities, one accountable crew. We build the brand, the platform, and the growth systems that make your market orbit you. Own your space.",
+  metadataBase: new URL(siteUrl),
+  applicationName: siteName,
+  title: {
+    default: defaultTitle,
+    template: `%s | ${siteName}`,
+  },
+  description: defaultDescription,
+  keywords: seoKeywords,
+  authors: [{ name: siteName, url: siteUrl }],
+  creator: siteName,
+  publisher: siteName,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName,
+    title: defaultTitle,
+    description: defaultDescription,
+    images: [
+      {
+        url: defaultOgImage,
+        width: 1200,
+        height: 630,
+        alt: "Verve digital agency homepage with a cinematic space system.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: defaultTitle,
+    description: defaultDescription,
+    images: [defaultOgImage],
+  },
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
@@ -32,9 +75,19 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const structuredData = [organizationJsonLd(), websiteJsonLd()];
+
   return (
     <html lang="en" className={sans.variable}>
       <body>
+        <Script
+          id="site-structured-data"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+          }}
+        />
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-4NRQQHXF7X"
           strategy="afterInteractive"
