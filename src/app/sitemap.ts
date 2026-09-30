@@ -18,6 +18,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.8,
     },
+    {
+      url: absoluteUrl("/privacy"),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: absoluteUrl("/terms"),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
     ...services.map((service) => ({
       url: absoluteUrl(`/services/${service.slug}`),
       lastModified: now,

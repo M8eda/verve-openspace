@@ -6,6 +6,7 @@ import { pagerState, pagerPosition, PAGE_COUNT } from "@/lib/journeyPager";
 import { jumpToPage } from "@/components/JourneyPager";
 import { scrollState } from "@/lib/scrollState";
 import { playGlassHover, playGlassClick } from "@/lib/audio";
+import { trackEvent } from "@/lib/analytics";
 import { subscribeFrame } from "@/lib/frameLoop";
 
 export default function JourneyTimeline() {
@@ -78,6 +79,11 @@ export default function JourneyTimeline() {
 
   const handleNodeClick = useCallback((wp: JourneyWaypoint) => {
     playGlassClick();
+    trackEvent("journey_timeline_jump", {
+      waypoint: wp.id,
+      label: wp.label,
+      index: wp.index,
+    });
     jumpToPage(wp.index);
   }, []);
 

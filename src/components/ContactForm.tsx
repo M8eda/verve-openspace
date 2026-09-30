@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   isContactOpen,
@@ -7,6 +8,8 @@ import {
   subscribeContactPanel,
 } from "@/lib/contactPanel";
 import { playGlassHover, playGlassClick } from "@/lib/audio";
+import { trackEvent } from "@/lib/analytics";
+import { contactEmail, contactPhoneDisplay, contactPhoneHref, copyrightNotice } from "@/lib/seo";
 
 export default function ContactForm() {
   const formRef = useRef<HTMLFormElement>(null);
@@ -85,7 +88,11 @@ export default function ContactForm() {
       `Name: ${name}\nEmail: ${email}\n\n${message}`,
     );
 
-    window.location.href = `mailto:info@verve-marketing.space?subject=${subject}&body=${body}`;
+    trackEvent("contact_submit", {
+      method: "mailto",
+      has_message: message.length > 0,
+    });
+    window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
     setSent(true);
   }
 
@@ -126,11 +133,17 @@ export default function ContactForm() {
           Tell us the space you&rsquo;re trying to own. We&rsquo;ll map the fastest path,
           and the exact forces that&rsquo;ll move the needle first.
         </p>
+        <p className="contact-direct">
+          Prefer direct contact? Email{" "}
+          <a href={`mailto:${contactEmail}`}>{contactEmail}</a> or call{" "}
+          <a href={contactPhoneHref}>{contactPhoneDisplay}</a>.
+        </p>
 
         {sent ? (
           <div className="contact-thanks" role="status" aria-live="polite">
             <p>Thanks for reaching out. Your email client should have opened. If it didn&rsquo;t, reach us directly at{" "}
-              <a href="mailto:info@verve-marketing.space">info@verve-marketing.space</a>
+              <a href={`mailto:${contactEmail}`}>{contactEmail}</a> or{" "}
+              <a href={contactPhoneHref}>{contactPhoneDisplay}</a>.
             </p>
           </div>
         ) : (
@@ -180,6 +193,16 @@ export default function ContactForm() {
             </button>
           </form>
         )}
+
+        <div className="contact-legal">
+          <p>
+            By submitting, you agree that Verve may use your details to respond
+            to your inquiry. See our{" "}
+            <Link href="/privacy" onClick={() => closeContactPanel()}>Privacy Policy</Link> and{" "}
+            <Link href="/terms" onClick={() => closeContactPanel()}>Terms of Use</Link>.
+          </p>
+          <p>{copyrightNotice}</p>
+        </div>
       </div>
     </section>
   );

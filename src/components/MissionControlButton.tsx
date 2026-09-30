@@ -6,9 +6,11 @@ import { openContactPanel } from "@/lib/contactPanel";
 export default function MissionControlButton({
   children,
   className,
+  source = "mission_control_button",
 }: {
   children: string;
   className: string;
+  source?: string;
 }) {
   return (
     <button
@@ -17,7 +19,7 @@ export default function MissionControlButton({
       onMouseEnter={() => playGlassHover()}
       onClick={() => {
         playGlassClick();
-        openContactPanel();
+        openContactPanel(source);
       }}
     >
       {children}

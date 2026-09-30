@@ -9,6 +9,7 @@ import { services } from "@/data/services";
 import { getPlanetPosition } from "@/lib/planetPositions";
 import { isFreeMode, subscribeFreeMode, closeFreeMode } from "@/lib/freeMode";
 import { playGlassHover, playGlassClick } from "@/lib/audio";
+import { trackEvent } from "@/lib/analytics";
 
 export default function PlanetLabels() {
   const [active, setActive] = useState(false);
@@ -73,6 +74,10 @@ function SingleLabel({
           onMouseEnter={() => playGlassHover()}
           onClick={() => {
             playGlassClick();
+            trackEvent("service_planet_click", {
+              service_slug: slug,
+              service_name: name,
+            });
             closeFreeMode();
             router.push(`/services/${slug}`);
           }}

@@ -1,3 +1,4 @@
+import { trackEvent } from "@/lib/analytics";
 import { lockPageScroll, unlockPageScroll } from "@/lib/scrollLock";
 
 type Listener = (open: boolean) => void;
@@ -8,9 +9,10 @@ const CONTACT_SCROLL_LOCK = "contact-panel";
 export function isContactOpen(): boolean {
   return isOpen;
 }
-export function openContactPanel(): void {
+export function openContactPanel(source = "unknown"): void {
   if (isOpen) return;
   isOpen = true;
+  trackEvent("contact_open", { source });
   lockPageScroll(CONTACT_SCROLL_LOCK);
   listeners.forEach((l) => l(true));
 }

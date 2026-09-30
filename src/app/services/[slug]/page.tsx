@@ -2,6 +2,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import LegalLinks from "@/components/LegalLinks";
 import MissionControlButton from "@/components/MissionControlButton";
 import { getServiceBySlug, services } from "@/data/services";
 import { defaultOgImage, serviceJsonLd, serviceKeywords, serviceUrl, siteName } from "@/lib/seo";
@@ -113,9 +114,10 @@ export default async function ServicePage({ params }: { params: Params }) {
       </section>
 
       <footer className="service-cta">
-        <MissionControlButton className="service-cta-button">
+        <MissionControlButton className="service-cta-button" source={`service_cta_${service.slug}`}>
           Start this project
         </MissionControlButton>
+        <LegalLinks className="legal-links-service" />
       </footer>
     </article>
   );

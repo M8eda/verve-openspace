@@ -9,6 +9,7 @@ import { isFreeMode } from "@/lib/freeMode";
 import { isContactOpen } from "@/lib/contactPanel";
 import { lockPageScroll, unlockPageScroll } from "@/lib/scrollLock";
 import { playGlassTing } from "@/lib/audio";
+import { trackEvent } from "@/lib/analytics";
 import { subscribeFrame } from "@/lib/frameLoop";
 
 let globalJumpToPage: (targetIndex: number) => void = () => {};
@@ -27,6 +28,7 @@ const JOURNEY_SCROLL_LOCK = "journey-pager";
 export default function JourneyPager() {
   const containerRef = useRef<HTMLDivElement>(null);
   const engagedRef = useRef<boolean>(false);
+  const completedRef = useRef<boolean>(pagerState.index >= PAGE_COUNT - 1);
   const cooldownRef = useRef<number>(0);
   const touchStartYRef = useRef<number>(0);
   const cancelTransitionRef = useRef<(() => void) | null>(null);
@@ -95,6 +97,10 @@ export default function JourneyPager() {
         pagerState.fromIndex = clampedTarget;
         pagerState.toIndex = clampedTarget;
         pagerState.t = 1;
+        if (clampedTarget >= PAGE_COUNT - 1 && !completedRef.current) {
+          completedRef.current = true;
+          trackEvent("journey_completed", { source: "jump" });
+        }
         cooldownRef.current = performance.now() + 300;
         pagerState.locked = false;
         cancelTransitionRef.current?.();
@@ -154,6 +160,10 @@ export default function JourneyPager() {
         pagerState.fromIndex = nextIdx;
         pagerState.toIndex = nextIdx;
         pagerState.t = 1;
+        if (nextIdx >= PAGE_COUNT - 1 && !completedRef.current) {
+          completedRef.current = true;
+          trackEvent("journey_completed", { source: "scroll" });
+        }
         cooldownRef.current = performance.now() + 300;
         pagerState.locked = false;
         cancelTransitionRef.current?.();

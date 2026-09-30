@@ -10,6 +10,7 @@ import {
   closeFreeMode,
 } from "@/lib/freeMode";
 import { playGlassHover, playGlassClick } from "@/lib/audio";
+import { trackEvent } from "@/lib/analytics";
 import { openContactPanel } from "@/lib/contactPanel";
 
 export default function Header() {
@@ -28,6 +29,7 @@ export default function Header() {
     if (freeMode) {
       // Exiting EVA. If we're not on the home page, go home so the journey
       // is visible again.
+      trackEvent("eva_toggle", { state: "exit", source: "header" });
       closeFreeMode();
       if (!isHome) router.push("/");
       return;
@@ -35,6 +37,7 @@ export default function Header() {
 
     if (isHome) {
       // Simple case: on the home page, just enter EVA.
+      trackEvent("eva_toggle", { state: "enter", source: "header" });
       toggleFreeMode();
       return;
     }
@@ -45,6 +48,7 @@ export default function Header() {
     window.setTimeout(() => {
       // Guard: the user may have navigated again in the meantime.
       if (window.location.pathname === "/") {
+        trackEvent("eva_toggle", { state: "enter", source: "header_cross_route" });
         toggleFreeMode();
       }
     }, 150);
@@ -77,7 +81,7 @@ export default function Header() {
           onMouseEnter={() => playGlassHover()}
           onClick={() => {
             playGlassClick();
-            openContactPanel();
+            openContactPanel("header_contact");
           }}
         >
           Contact

@@ -98,6 +98,7 @@ html.lenis body {
 .service-block::before,
 .core-block::before,
 .core-cta::before,
+.legal-block::before,
 .contact-glass::before,
 .contact-thanks::before,
 .journey-hud-card::before,
@@ -137,6 +138,7 @@ html.lenis body {
 .service-block,
 .core-block,
 .core-cta,
+.legal-block,
 .contact-glass,
 .contact-thanks,
 .journey-hud-card,
@@ -151,7 +153,8 @@ html.lenis body {
 .journey-caption-inner { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.3s; }
 .service-block,
 .core-block,
-.core-cta {
+.core-cta,
+.legal-block {
   animation: none;
   box-shadow:
     0 0 0 1px rgba(205, 247, 87, 0.18),
@@ -217,7 +220,7 @@ html.lenis body {
   }
 
   .glass::before, .journey-caption-inner::before,
-  .service-block::before, .core-block::before, .core-cta::before, .contact-glass::before,
+  .service-block::before, .core-block::before, .core-cta::before, .legal-block::before, .contact-glass::before,
   .contact-thanks::before, .journey-hud-card::before,
   .header-link::before, .journey-caption-link::before,
   .service-cta-button::before, .contact-submit::before {
@@ -1058,7 +1061,8 @@ button:focus-visible {
 }
 
 .core-block,
-.core-cta {
+.core-cta,
+.legal-block {
   position: relative;
   overflow: hidden;
   margin-top: 1.5rem;
@@ -1069,7 +1073,8 @@ button:focus-visible {
   border-radius: var(--glass-radius);
 }
 
-.core-block h2 {
+.core-block h2,
+.legal-block h2 {
   position: relative;
   z-index: 1;
   margin: 0 0 1rem;
@@ -1082,15 +1087,81 @@ button:focus-visible {
 .core-block li,
 .core-cta p,
 .core-cta h2,
-.core-cta button {
+.core-cta button,
+.legal-block p,
+.legal-block li,
+.legal-links {
   position: relative;
   z-index: 1;
 }
 
-.core-block p {
+.core-block p,
+.legal-block p,
+.legal-block li {
   margin: 0;
   color: var(--ink-muted);
   line-height: 1.6;
+}
+
+.legal-page {
+  position: relative;
+  z-index: 1;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: clamp(6rem, 12vh, 9rem) var(--pad) 8rem;
+}
+
+.legal-hero {
+  max-width: 46rem;
+  margin-bottom: 3rem;
+}
+
+.legal-hero h1 {
+  margin: 0;
+  font-size: clamp(2.25rem, 5.5vw, 4.4rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+}
+
+.legal-hero p {
+  margin: 1.25rem 0 0;
+  max-width: 42rem;
+  color: var(--ink-muted);
+  font-size: 1.12rem;
+  line-height: 1.6;
+}
+
+.legal-updated {
+  color: var(--ink-soft) !important;
+  font-size: 0.9rem !important;
+}
+
+.legal-block ul {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding-left: 1.25rem;
+}
+
+.legal-block p + p {
+  margin-top: 1rem;
+}
+
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 1.5rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.legal-links a {
+  white-space: nowrap;
 }
 
 .core-force-list,
@@ -1226,6 +1297,44 @@ button:focus-visible {
   font-size: 1.05rem;
   line-height: 1.55;
   max-width: 42ch;
+}
+
+.contact-direct,
+.contact-legal {
+  position: relative;
+  z-index: 1;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.contact-direct {
+  margin: 1rem 0 0;
+  font-size: 0.92rem;
+}
+
+.contact-legal {
+  margin: -0.25rem 0 0;
+  max-width: 42rem;
+  font-size: 0.78rem;
+}
+
+.contact-legal p {
+  margin: 0.35rem 0 0;
+}
+
+.contact-direct a,
+.contact-legal a,
+.legal-links a,
+.legal-block a {
+  color: var(--emerald);
+  text-decoration: none;
+}
+
+.contact-direct a:hover,
+.contact-legal a:hover,
+.legal-links a:hover,
+.legal-block a:hover {
+  text-decoration: underline;
 }
 
 .contact-form {

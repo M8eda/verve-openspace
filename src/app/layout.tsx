@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import Script from "next/script";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
+import AnalyticsPageView from "@/components/AnalyticsPageView";
 import ContactForm from "@/components/ContactForm";
 import Header from "@/components/Header";
 import Loader from "@/components/Loader";
@@ -97,9 +99,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-4NRQQHXF7X');
+            gtag('config', 'G-4NRQQHXF7X', { send_page_view: false });
           `}
         </Script>
+        <Suspense fallback={null}>
+          <AnalyticsPageView />
+        </Suspense>
         <SceneRoot />
         <SceneVisibility />
         <SmoothScroll />

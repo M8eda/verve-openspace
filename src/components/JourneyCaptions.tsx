@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { services } from "@/data/services";
 import { pagerPosition } from "@/lib/journeyPager";
 import { subscribeFrame } from "@/lib/frameLoop";
+import { trackEvent } from "@/lib/analytics";
 
 type Stop = {
   param: number;
@@ -179,6 +180,13 @@ export default function JourneyCaptions() {
           tabIndex={-1}
           aria-hidden="true"
           style={{ opacity: 0, pointerEvents: "none" }}
+          onClick={() => {
+            if (!linkRef.current?.href) return;
+            trackEvent("journey_caption_click", {
+              target: linkRef.current.pathname,
+              label: linkRef.current.textContent ?? "",
+            });
+          }}
         >
           View service →
         </a>

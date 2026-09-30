@@ -2,10 +2,14 @@ import { services } from "@/data/services";
 
 export const siteUrl = "https://verve-marketing.space";
 export const siteName = "Verve";
+export const contactEmail = "info@verve-marketing.space";
+export const contactPhoneDisplay = "+20 11 16741301";
+export const contactPhoneHref = "tel:+201116741301";
+export const copyrightNotice = "© 2026 Verve. All rights reserved.";
 export const defaultTitle = "Verve — Brand, Web Design & Digital Growth Agency";
 export const defaultDescription =
   "Verve is a digital agency building brand, web design, SEO, paid media, email marketing, and growth systems that help ambitious companies own their space.";
-export const defaultOgImage = "/screenshot-home.png";
+export const defaultOgImage = "/og-image.png";
 
 export const seoKeywords = [
   "Verve",
@@ -43,6 +47,16 @@ export function organizationJsonLd() {
     url: siteUrl,
     logo: absoluteUrl("/icon.svg"),
     description: defaultDescription,
+    email: contactEmail,
+    telephone: contactPhoneDisplay,
+    contactPoint: {
+      "@type": "ContactPoint",
+      telephone: contactPhoneDisplay,
+      email: contactEmail,
+      contactType: "customer inquiries",
+      areaServed: "Worldwide",
+      availableLanguage: ["en"],
+    },
     sameAs: ["https://github.com/M8eda/verve-openspace"],
     makesOffer: services.map((service) => ({
       "@type": "Offer",

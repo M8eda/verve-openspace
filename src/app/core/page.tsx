@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import LegalLinks from "@/components/LegalLinks";
 import MissionControlButton from "@/components/MissionControlButton";
 import { defaultOgImage, siteName } from "@/lib/seo";
 
@@ -129,9 +130,10 @@ export default function CorePage() {
           Tell us the market you&rsquo;re trying to bend. We&rsquo;ll show you the fastest
           path to the center.
         </p>
-        <MissionControlButton className="service-cta-button">
+        <MissionControlButton className="service-cta-button" source="core_cta">
           Open mission control →
         </MissionControlButton>
+        <LegalLinks className="legal-links-core" />
       </footer>
     </article>
   );
