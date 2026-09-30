@@ -28,6 +28,8 @@
 
 Verve turns a service menu into a spatial brand system. Instead of asking visitors to scan a conventional agency page, the site moves them through a solar-system journey: every capability is a planet, every flyby reveals a concise value proposition, and the final stop is Mission Control.
 
+The guided path is only half the experience. Visitors can enter **EVA mode** to break out of the scripted journey and freely orbit, pan, and zoom through the service system like an interactive brand universe.
+
 The result is a portfolio-grade agency experience that feels immersive while still keeping the essentials intact: clear service pages, accessible content, search metadata, analytics, legal pages, and production-safe fallbacks.
 
 ## Experience
@@ -35,10 +37,16 @@ The result is a portfolio-grade agency experience that feels immersive while sti
 - **Scroll-driven galaxy journey** through the Verve service system.
 - **Nine orbiting service planets** with custom shader-driven visual identities.
 - **HUD-inspired timeline navigation** for jumping between mission points.
-- **EVA/free-look mode** for exploring the system manually.
+- **EVA/free-look mode** for breaking out of the guided scroll path and exploring the system manually.
 - **Static service pages** generated from structured content.
 - **Mission Control contact flow** with direct fallback contact options.
 - **Cinematic brand language** built around gravity, orbit, launch, and momentum.
+
+## EVA mode
+
+EVA mode turns the site from a guided presentation into an explorable space. Visitors can leave the scroll sequence, take manual control, and move around the 3D system directly — orbiting planets, inspecting the scene, and opening service pages from planet labels.
+
+It gives the website a second mode of interaction: structured storytelling when visitors scroll, free exploration when they want control.
 
 ## Built for production
 
