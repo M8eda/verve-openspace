@@ -20,7 +20,7 @@
   </p>
 </div>
 
-![Verve homepage hero with a scroll-driven 3D galaxy system](./public/screenshot-home.png)
+![Verve homepage hero with a scroll-driven 3D galaxy system](./docs/screenshot-home.png)
 
 > Own your space.
 
@@ -166,7 +166,8 @@ src/
   data/                 Service content and visual data
   lib/                  Shared utilities, analytics, SEO, scroll/contact state
   shaders/              GLSL shader sources
-public/                 Icons, social image, screenshot, and visual assets
+public/                 Icon and social share image
+docs/                   README screenshot (not deployed)
 ```
 
 ## Status
