@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque } from "next/font/google";
+import { Bricolage_Grotesque, VT323 } from "next/font/google";
 import Script from "next/script";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -25,6 +25,13 @@ import "./globals.css";
 const sans = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+const terminal = VT323({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-terminal",
   display: "swap",
 });
 
@@ -80,7 +87,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const structuredData = [organizationJsonLd(), websiteJsonLd()];
 
   return (
-    <html lang="en" className={sans.variable}>
+    <html lang="en" className={`${sans.variable} ${terminal.variable}`}>
       <body>
         <Script
           id="site-structured-data"

@@ -17,9 +17,50 @@ const CAMERA_CURVE_SEGMENTS = WAYPOINT_COUNT - 1;
 const GALAXY_CAM_Y = 280;
 const GALAXY_CAM_Z = 0;
 
+/** Matches the CSS breakpoint where the journey terminal docks to the bottom. */
+const STACKED_MAX_WIDTH = 768;
+/** Lens shift (fraction of the viewport) that clears room for the terminal:
+ *  rightward when it sits on the left, upward when it's docked below. */
+const SIDE_SHIFT = 0.18;
+const STACKED_SHIFT = 0.2;
+
 function smoothstep(x: number) {
   const t = THREE.MathUtils.clamp(x, 0, 1);
   return t * t * (3 - 2 * t);
+}
+
+/**
+ * Off-centre projection so whatever the camera looks at renders beside the
+ * journey terminal instead of behind it. Same 0..1 ramp as the terminal's
+ * own fade, so the two move together. Only touches the projection when the
+ * offset actually changes.
+ */
+function applyLensShift(
+  camera: THREE.Camera,
+  width: number,
+  height: number,
+  P: number,
+  free: boolean,
+  last: { x: number; y: number; w: number; h: number },
+) {
+  if (!(camera instanceof THREE.PerspectiveCamera)) return;
+
+  const amount = free ? 0 : smoothstep((P - 0.6) / 0.4);
+  const stacked = width <= STACKED_MAX_WIDTH;
+  const x = stacked ? 0 : Math.round(-width * SIDE_SHIFT * amount);
+  const y = stacked ? Math.round(height * STACKED_SHIFT * amount) : 0;
+
+  if (x === last.x && y === last.y && width === last.w && height === last.h) return;
+  last.x = x;
+  last.y = y;
+  last.w = width;
+  last.h = height;
+
+  if (x === 0 && y === 0) {
+    camera.clearViewOffset();
+  } else {
+    camera.setViewOffset(width, height, x, y, width, height);
+  }
 }
 
 export default function CameraRig() {
@@ -34,6 +75,7 @@ export default function CameraRig() {
   const lookPoints = useRef<THREE.Vector3[]>(
     Array.from({ length: WAYPOINT_COUNT }, () => new THREE.Vector3()),
   );
+  const lensShift = useRef({ x: 0, y: 0, w: 0, h: 0 });
   const scratch = useRef({
     outward: new THREE.Vector3(),
     side: new THREE.Vector3(),
@@ -61,9 +103,11 @@ export default function CameraRig() {
   }, [skipParallax]);
 
   useFrame((state, delta) => {
-    if (isFreeMode()) return;
-    const dt = Math.min(delta, 0.05);
+    const free = isFreeMode();
     const P = pagerPosition(); // 0..PAGE_COUNT-1 (0..12)
+    applyLensShift(state.camera, state.size.width, state.size.height, P, free, lensShift.current);
+    if (free) return;
+    const dt = Math.min(delta, 0.05);
 
     if (P <= 1) {
       const t = smoothstep(THREE.MathUtils.clamp(P, 0, 1));
@@ -97,9 +141,11 @@ export default function CameraRig() {
       outward.normalize();
       const side = scratch.current.side.crossVectors(outward, UP).normalize();
 
+      // Desktop shares the frame with the terminal now, so it backs off a
+      // little further than a full-screen close-up would.
       const standoff = mobileFrame
         ? effectiveRadius * 3.9 + 1.9
-        : effectiveRadius * 2.0 + 0.75;
+        : effectiveRadius * 2.75 + 1.0;
 
       const verticalBias = mobileFrame
         ? effectiveRadius * 0.5 + 0.3 + Math.sin(s.index * 1.7) * 0.22
@@ -110,17 +156,9 @@ export default function CameraRig() {
         .addScaledVector(side, standoff)
         .addScaledVector(UP, verticalBias);
 
-      // On mobile, decouple the look target from the planet's exact centre
-      // so the planet renders upper-left in frame instead of dead-centre,
-      // leaving the lower-right clear for the caption panel.
-      if (mobileFrame) {
-        look[k + 1]
-          .copy(planet)
-          .addScaledVector(side, effectiveRadius * 0.85)
-          .addScaledVector(UP, effectiveRadius * -0.5);
-      } else {
-        look[k + 1].copy(planet);
-      }
+      // Always aim at the planet itself; applyLensShift moves it out from
+      // behind the terminal on screen.
+      look[k + 1].copy(planet);
     }
 
     pos[pos.length - 1].set(CAMERA_END.x, CAMERA_END.y, CAMERA_END.z);

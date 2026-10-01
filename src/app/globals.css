@@ -94,7 +94,6 @@ html.lenis body {
 }
 
 .glass::before,
-.journey-caption-inner::before,
 .service-block::before,
 .core-block::before,
 .core-cta::before,
@@ -103,7 +102,6 @@ html.lenis body {
 .contact-thanks::before,
 .journey-hud-card::before,
 .header-link::before,
-.journey-caption-link::before,
 .service-cta-button::before,
 .contact-submit::before {
   content: "";
@@ -134,7 +132,6 @@ html.lenis body {
 }
 
 .glass,
-.journey-caption-inner,
 .service-block,
 .core-block,
 .core-cta,
@@ -143,14 +140,12 @@ html.lenis body {
 .contact-thanks,
 .journey-hud-card,
 .header-link,
-.journey-caption-link,
 .service-cta-button,
 .contact-submit {
   border: 1px solid rgba(205, 247, 87, 0.35);
 }
 
 .glass { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0s; }
-.journey-caption-inner { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.3s; }
 .service-block,
 .core-block,
 .core-cta,
@@ -172,7 +167,6 @@ html.lenis body {
 .contact-thanks { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 1.2s; }
 .journey-hud-card { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 1.5s; }
 .header-link { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.15s; }
-.journey-caption-link { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.45s; }
 .service-cta-button { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.75s; }
 .contact-submit { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 1.05s; }
 
@@ -212,17 +206,17 @@ html.lenis body {
     transition-duration: 0.001ms !important;
   }
 
-  .glass, .journey-caption-inner, .service-block, .core-block,
+  .glass, .service-block, .core-block,
   .core-cta, .contact-glass, .contact-thanks, .journey-hud-card, .header-link,
-  .journey-caption-link, .service-cta-button, .contact-submit, .assembly-word,
+  .service-cta-button, .contact-submit, .assembly-word,
   .scroll-indicator.reveal-delayed, .plasma-text {
     animation: none !important;
   }
 
-  .glass::before, .journey-caption-inner::before,
+  .glass::before,
   .service-block::before, .core-block::before, .core-cta::before, .legal-block::before, .contact-glass::before,
   .contact-thanks::before, .journey-hud-card::before,
-  .header-link::before, .journey-caption-link::before,
+  .header-link::before,
   .service-cta-button::before, .contact-submit::before {
     animation: none !important;
   }
@@ -649,70 +643,300 @@ button:focus-visible {
 }
 
 /* ============================================================
-   Journey captions — glass card overlay
+   Journey terminal — retro data terminal overlay
+   A gunmetal bezel around a curved phosphor screen. --phosphor
+   is set per stop (planet colour); --content fades the screen
+   text between stops while the frame and header label stay up.
    ============================================================ */
-.journey-caption {
+.journey-terminal {
   position: fixed;
   inset: 0;
   z-index: 2;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 0 var(--pad);
+  justify-content: flex-start;
+  padding: 5.5rem var(--pad) 3rem;
   pointer-events: none;
-  transition: opacity 0.15s linear, transform 0.05s linear;
   will-change: transform, opacity;
 }
 
-.journey-caption[data-hidden="true"] {
+.journey-terminal[data-hidden="true"] {
   display: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
 }
 
-.journey-caption-inner {
+.terminal-bezel {
+  --phosphor: #cdf757;
+  position: relative;
+  width: min(32rem, 40vw);
+  padding: 0.9rem 0.9rem 0.55rem;
+  border-radius: 20px 20px 16px 16px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 38%),
+    linear-gradient(180deg, #2a2d33 0%, #1a1c21 55%, #121317 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 18px 50px rgba(0, 0, 0, 0.55),
+    0 0 60px color-mix(in srgb, var(--phosphor) 10%, transparent);
+}
+
+/* Corner screws */
+.terminal-bezel::before,
+.terminal-bezel::after {
+  content: "";
+  position: absolute;
+  top: 0.32rem;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #8a8f99, #3a3d44 60%, #1b1d22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.terminal-bezel::before { left: 0.4rem; }
+.terminal-bezel::after { right: 0.4rem; }
+
+.terminal-screen {
+  --content: 1;
   position: relative;
   overflow: hidden;
-  background: var(--glass-panel-bg-caption);
-  backdrop-filter: var(--glass-blur-xxxl);
-  -webkit-backdrop-filter: var(--glass-blur-xxxl);
-  border-radius: 22px;
-  padding: clamp(1.75rem, 3.5vw, 2.75rem) clamp(2.5rem, 5vw, 4rem);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  min-height: 15.5rem;
+  padding: 0.9rem 1.15rem 1rem;
+  border-radius: 14px / 18px;
+  color: var(--phosphor);
+  font-family: var(--font-terminal), ui-monospace, Consolas, monospace;
+  font-size: 1.45rem;
+  line-height: 1.22;
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0 1px color-mix(in srgb, var(--phosphor) 90%, white),
+    0 0 8px color-mix(in srgb, var(--phosphor) 55%, transparent);
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 45%,
+      color-mix(in srgb, var(--phosphor) 9%, #05080a) 0%,
+      #040607 75%);
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.85),
+    inset 0 0 28px rgba(0, 0, 0, 0.9),
+    inset 0 0 70px color-mix(in srgb, var(--phosphor) 8%, transparent);
+  cursor: default;
 }
 
-.journey-caption-eyebrow {
+/* Scanlines + slow rolling refresh band */
+.terminal-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--phosphor) 6%, transparent) 50%, transparent 100%) 0 -120% / 100% 40% no-repeat,
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px);
+  animation: terminal-roll 7s linear infinite;
+}
+
+/* Curved glass glare + vignette */
+.terminal-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 80% 55% at 28% 8%, rgba(255, 255, 255, 0.09), transparent 60%),
+    radial-gradient(ellipse 110% 100% at 50% 50%, transparent 62%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.terminal-screen.is-flicker {
+  animation: terminal-flicker 0.32s steps(2, end) 1;
+}
+
+.terminal-header {
   position: relative;
   z-index: 1;
-  color: var(--emerald);
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+  font-size: 1.05rem;
   text-transform: uppercase;
 }
 
-.journey-caption-title {
-  position: relative;
-  z-index: 1;
-  margin: 0.65rem 0 0;
-  font-size: clamp(2rem, 5vw, 3.75rem);
-  font-weight: 500;
-  letter-spacing: -0.03em;
+/* Permanent label — inverse-video bar, readable even mid-flight */
+.terminal-tag {
+  min-width: 0;
+  padding: 0.05rem 0.5rem 0;
+  background: var(--phosphor);
+  color: #05080a;
+  text-shadow: none;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--phosphor) 55%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.terminal-tag.is-flicker {
+  animation: terminal-flicker 0.24s steps(2, end) 1;
 }
 
-.journey-caption-line {
+.terminal-sysid {
+  flex-shrink: 0;
+  padding: 0 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 55%, transparent);
+  opacity: 0.75;
+}
+
+.terminal-body {
   position: relative;
   z-index: 1;
-  margin: 0.85rem 0 0;
-  max-width: 34ch;
-  color: var(--ink-muted);
-  font-size: 1.05rem;
-  line-height: 1.5;
+  opacity: var(--content);
+}
+
+.terminal-line {
+  min-height: 1.22em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.terminal-line + .terminal-line { margin-top: 0.3rem; }
+.terminal-line-cmd { opacity: 0.9; }
+.terminal-line-meta { font-size: 0.86em; letter-spacing: 0.06em; opacity: 0.6; }
+.terminal-line-hi {
+  margin-top: 0.75rem !important;
+  font-size: 1.32em;
+  line-height: 1.08;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 1px color-mix(in srgb, var(--phosphor) 80%, white),
+    0 0 12px color-mix(in srgb, var(--phosphor) 70%, transparent);
+}
+.terminal-line-out { color: color-mix(in srgb, var(--phosphor) 72%, white); }
+.terminal-line-prompt {
+  margin-top: 0.75rem !important;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+/* The untyped remainder keeps its space so the screen never reflows */
+.terminal-rest { visibility: hidden; }
+
+.terminal-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 0.08em;
+  vertical-align: -0.12em;
+  background: var(--phosphor);
+  box-shadow: 0 0 8px var(--phosphor);
+  animation: terminal-blink 1s steps(1, end) infinite;
+}
+.journey-terminal[data-phase="typing"] .terminal-cursor { animation: none; }
+
+.terminal-option {
+  position: relative;
+  z-index: 4;
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.1rem 0.3rem 0;
+  color: var(--phosphor);
+  text-decoration: none;
+  text-transform: uppercase;
+  opacity: var(--content);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.terminal-option:hover,
+.terminal-option:focus-visible {
+  background: var(--phosphor);
+  color: #05080a;
+  text-shadow: none;
+  outline: none;
+}
+.terminal-option:hover .terminal-cursor,
+.terminal-option:focus-visible .terminal-cursor {
+  background: #05080a;
+  box-shadow: none;
+}
+
+.terminal-plate {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  padding: 0 0.3rem;
+  color: rgba(214, 220, 230, 0.4);
+  font-family: var(--font-terminal), ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.terminal-led {
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: auto;
+  border-radius: 50%;
+  background: var(--phosphor);
+  box-shadow: 0 0 6px var(--phosphor);
+  animation: terminal-blink 2.4s steps(1, end) infinite;
+}
+
+@keyframes terminal-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes terminal-roll {
+  0% { background-position: 0 -120%, 0 0; }
+  100% { background-position: 0 220%, 0 0; }
+}
+
+@keyframes terminal-flicker {
+  0% { opacity: 0.35; filter: brightness(1.8); }
+  50% { opacity: 0.85; }
+  100% { opacity: 1; filter: none; }
+}
+
+@media (max-width: 1100px) {
+  .terminal-bezel { width: min(28rem, 44vw); }
+  .terminal-screen { min-height: 14rem; font-size: 1.2rem; }
+}
+
+/* Mobile: the planet sits in the top half, the terminal fills the bottom */
+@media (max-width: 768px) {
+  .journey-terminal {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 3.1rem 4vh 0.9rem;
+  }
+  .terminal-bezel {
+    width: 100%;
+    max-width: 30rem;
+    padding: 0.6rem 0.6rem 0.4rem;
+    border-radius: 16px 16px 12px 12px;
+  }
+  .terminal-bezel::before,
+  .terminal-bezel::after { top: 0.2rem; width: 0.26rem; height: 0.26rem; }
+  .terminal-screen {
+    min-height: 0;
+    padding: 0.7rem 0.85rem 0.8rem;
+    font-size: 1.12rem;
+  }
+  .terminal-header { margin-bottom: 0.5rem; font-size: 0.95rem; }
+  .terminal-line-hi { font-size: 1.22em; }
+  .terminal-option { margin-top: 0.7rem; }
+  .terminal-plate { margin-top: 0.3rem; font-size: 0.72rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-screen::before,
+  .terminal-cursor,
+  .terminal-led,
+  .terminal-screen.is-flicker,
+  .terminal-tag.is-flicker {
+    animation: none !important;
+  }
 }
 
 /* Debug */
@@ -758,45 +982,6 @@ button:focus-visible {
 .scene-hidden .scene-root {
   opacity: 0;
   transition: opacity 0.3s ease;
-}
-
-/* ============================================================
-   Journey caption buttons — glass pills
-   ============================================================ */
-.journey-caption-link {
-  position: relative;
-  overflow: hidden;
-  margin-top: 1.75rem;
-  color: var(--ink);
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: none;
-  padding: 0.65rem 1.5rem;
-  border-radius: 999px;
-  background: rgba(205, 247, 87, 0.08);
-  backdrop-filter: var(--glass-blur-lg);
-  -webkit-backdrop-filter: var(--glass-blur-lg);
-  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
-}
-.journey-caption-link:hover {
-  transform: translateY(-1px);
-  background: rgba(205, 247, 87, 0.14);
-  box-shadow:
-    inset 0 1px 0 0 rgba(205, 247, 87, 0.12),
-    0 6px 24px rgba(0, 0, 0, 0.25);
-}
-
-.journey-caption-cta {
-  margin-top: 2rem;
-  font-size: 1.05rem;
-  padding: 1rem 2.4rem;
-  background: rgba(205, 247, 87, 0.12);
-  border: 1px solid rgba(205, 247, 87, 0.22);
-  border-top-color: rgba(205, 247, 87, 0.35);
-  box-shadow:
-    inset 0 1px 0 0 rgba(205, 247, 87, 0.1),
-    0 0 2rem 0.1rem rgba(205, 247, 87, 0.15),
-    0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .scene-fallback {
@@ -1195,7 +1380,7 @@ button:focus-visible {
 /* ============================================================
    Contact section — glass container
    The contact section is BELOW the journey scroll runway, so it
-   must never overlap with the fixed journey-caption overlay.
+   must never overlap with the fixed journey-terminal overlay.
    ============================================================ */
 .contact-section {
   position: fixed;
@@ -1771,14 +1956,6 @@ button.service-cta-button {
      but the HUD tooltip card has no good trigger, so hide it here */
   .journey-hud-card {
     display: none;
-  }
-  .journey-caption {
-    justify-content: flex-end;
-    padding-bottom: 12vh;
-  }
-  .journey-caption-inner {
-    max-width: 82vw;
-    width: auto;
   }
 }
 
