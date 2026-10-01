@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { closeFreeMode } from "@/lib/freeMode";
+import { cancelPendingFreeMode, closeFreeMode } from "@/lib/freeMode";
 
 /**
  * Keeps the fixed canvas layer hidden outside the home page, where the
@@ -14,6 +14,8 @@ export default function SceneVisibility() {
 
   useEffect(() => {
     closeFreeMode();
+    // Left for another page before the home scene came up: drop the EVA request.
+    if (pathname !== "/") cancelPendingFreeMode();
     document.documentElement.classList.toggle("scene-hidden", pathname !== "/");
   }, [pathname]);
 

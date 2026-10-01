@@ -5,6 +5,8 @@ import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import Scene from "./scene/Scene";
 import { sceneReady } from "@/lib/scrollState";
+import { consumePendingFreeMode } from "@/lib/freeMode";
+import { trackEvent } from "@/lib/analytics";
 
 /** How long we wait for a lost context to come back before giving up on it. */
 const CONTEXT_LOST_GRACE_MS = 2500;
@@ -49,10 +51,14 @@ export default function SceneCanvas({ dpr, weak, onBroken }: SceneCanvasProps) {
         toneMapping: THREE.ACESFilmicToneMapping,
         toneMappingExposure: 1.15,
       }}
-      performance={{ min: 0.4 }}
       onCreated={({ gl }) => {
         sceneReady.ready = true;
         sceneReady.failed = false;
+
+        // EVA requested from another page opens now that there's a scene to fly.
+        if (consumePendingFreeMode()) {
+          trackEvent("eva_toggle", { state: "enter", source: "header_cross_route" });
+        }
 
         const canvas = gl.domElement;
 
@@ -78,7 +84,7 @@ export default function SceneCanvas({ dpr, weak, onBroken }: SceneCanvasProps) {
       }}
       onPointerMissed={() => undefined}
     >
-      <Scene />
+      <Scene dpr={dpr} />
     </Canvas>
   );
 }

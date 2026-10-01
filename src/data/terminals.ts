@@ -1,4 +1,5 @@
 import { services } from "./services";
+import { CORE_ID } from "@/lib/planetFocus";
 
 /**
  * Copy for the journey terminal: one screen per pager stop (system
@@ -10,13 +11,27 @@ import { services } from "./services";
  * - meta:   dim status readout (dropped on the compact mobile layout)
  * - hi:     bright headline line
  * - out:    regular output
- * - prompt: dim closing hint
+ * - prompt: dim closing note
  */
 export type TerminalLineKind = "cmd" | "meta" | "hi" | "out" | "prompt";
 
 export type TerminalLine = {
   kind: TerminalLineKind;
   text: string;
+};
+
+/** What choosing a terminal option does. */
+export type TerminalAction =
+  | { type: "link"; href: string }
+  | { type: "next" }
+  | { type: "eva" }
+  | { type: "contact" }
+  /** EVA only: undock from the focused body and go back to free flight. */
+  | { type: "release" };
+
+export type TerminalOption = {
+  label: string;
+  action: TerminalAction;
 };
 
 export type TerminalStop = {
@@ -26,10 +41,21 @@ export type TerminalStop = {
   tag: string;
   /** Small header readout and bezel plate number. */
   sysId: string;
+  /** 3D body this screen describes (service slug or CORE_ID), if any. */
+  bodyId: string | null;
   /** Phosphor colour for this screen. */
   color: string;
   lines: TerminalLine[];
-  link: { href: string; label: string } | null;
+  /**
+   * One option renders as a single "ENTER OPTION: [ LABEL ]" link; more than
+   * one renders as a numbered menu that also answers to the number keys.
+   */
+  options: TerminalOption[];
+  /**
+   * "Scroll to continue" nudge once typing is done: "primary" blinks after
+   * the visitor has sat idle for a few seconds, "subtle" is a dim footnote.
+   */
+  hint: "primary" | "subtle" | null;
 };
 
 const BRAND = "#cdf757";
@@ -64,6 +90,7 @@ export const TERMINAL_STOPS: TerminalStop[] = [
     param: 1,
     tag: "00 // System overview",
     sysId: "SYS ID:00",
+    bodyId: null,
     color: BRAND,
     lines: [
       { kind: "cmd", text: "connect verve.system" },
@@ -73,15 +100,20 @@ export const TERMINAL_STOPS: TerminalStop[] = [
         kind: "out",
         text: "The internet is a vast space. What were the odds you'd drift into ours?",
       },
-      { kind: "out", text: "We're glad you did. Explore our planets, and travel safe." },
-      { kind: "prompt", text: `Next stop: ${pad(1)} // ${services[0].name}` },
+      { kind: "out", text: "We're glad you did. Choose how you'd like to travel." },
     ],
-    link: null,
+    options: [
+      { label: "Begin journey", action: { type: "next" } },
+      { label: "EVA · Free roam", action: { type: "eva" } },
+      { label: "Contact", action: { type: "contact" } },
+    ],
+    hint: "primary",
   },
   ...services.map((s, k) => ({
     param: k + 2,
     tag: `${pad(s.index)} // ${s.name}`,
     sysId: `SYS ID:${pad(s.index)}`,
+    bodyId: s.slug,
     color: s.visual.color,
     lines: [
       { kind: "cmd" as const, text: `scan --planet ${s.slug}` },
@@ -92,12 +124,14 @@ export const TERMINAL_STOPS: TerminalStop[] = [
       { kind: "hi" as const, text: s.tagline },
       { kind: "out" as const, text: PLANET_COPY[s.slug] ?? s.description },
     ],
-    link: { href: `/services/${s.slug}`, label: "Explore planet" },
+    options: [{ label: "Explore planet", action: { type: "link" as const, href: `/services/${s.slug}` } }],
+    hint: "subtle" as const,
   })),
   {
     param: services.length + 2,
     tag: `${pad(coreIndex)} // Verve core`,
     sysId: `SYS ID:${pad(coreIndex)}`,
+    bodyId: CORE_ID,
     color: BRAND,
     lines: [
       { kind: "cmd", text: "dock --core" },
@@ -105,9 +139,55 @@ export const TERMINAL_STOPS: TerminalStop[] = [
       { kind: "hi", text: "Verve core online." },
       {
         kind: "out",
-        text: "Every planet connects back to this point. Mission control is ready when you are.",
+        text: "Every planet connects back to this point. Mission control is ready when you are, or take the controls and roam free.",
       },
     ],
-    link: { href: "/core", label: "Open mission control" },
+    options: [
+      { label: "Open mission control", action: { type: "link", href: "/core" } },
+      { label: "EVA · Free roam", action: { type: "eva" } },
+    ],
+    hint: null,
   },
 ];
+
+/** Screen shown in EVA once the camera has docked at a body. */
+export type EvaScreen = Pick<TerminalStop, "tag" | "sysId" | "color" | "lines" | "options">;
+
+export function evaScreen(id: string): EvaScreen | null {
+  if (id === CORE_ID) {
+    return {
+      tag: `${pad(coreIndex)} // Verve core`,
+      sysId: `SYS ID:${pad(coreIndex)}`,
+      color: BRAND,
+      lines: [
+        { kind: "cmd", text: "dock --core" },
+        { kind: "meta", text: "EVA LINK · ALL ORBITS CONVERGE HERE" },
+        { kind: "hi", text: "Verve core online." },
+        { kind: "out", text: "Mission control runs the whole system from here. Tell us where you're headed." },
+      ],
+      options: [
+        { label: "Open mission control", action: { type: "link", href: "/core" } },
+        { label: "Contact", action: { type: "contact" } },
+        { label: "Undock", action: { type: "release" } },
+      ],
+    };
+  }
+
+  const s = services.find((service) => service.slug === id);
+  if (!s) return null;
+  return {
+    tag: `${pad(s.index)} // ${s.name}`,
+    sysId: `SYS ID:${pad(s.index)}`,
+    color: s.visual.color,
+    lines: [
+      { kind: "cmd", text: `dock --planet ${s.slug}` },
+      { kind: "meta", text: `EVA LINK · ORBIT ${s.visual.orbitRadius.toFixed(1)} AU` },
+      { kind: "hi", text: s.tagline },
+      { kind: "out", text: PLANET_COPY[s.slug] ?? s.description },
+    ],
+    options: [
+      { label: "Explore planet", action: { type: "link", href: `/services/${s.slug}` } },
+      { label: "Undock", action: { type: "release" } },
+    ],
+  };
+}

@@ -7,6 +7,8 @@ export type Service = {
   slug: string;
   index: number;
   name: string;
+  /** One-word label for map tags and lists. */
+  shortName: string;
   tagline: string;
   description: string;
   benefits: string[];
@@ -44,6 +46,7 @@ export const services: Service[] = [
     slug: "branding-strategy",
     index: 1,
     name: "Branding & Strategy",
+    shortName: "Branding",
     tagline: "Your north star. Locked in.",
     description:
       "Before tactics, clarity. We define who you are, who you're for, and why you win, then translate that into an identity and a roadmap your whole crew can navigate by. No moodboard fluff. A fixed point the entire operation orients around.",
@@ -65,12 +68,13 @@ export const services: Service[] = [
       "Brand guidelines",
       "Growth roadmap",
     ],
-    visual: { color: "#d6b3ff", accent: "#efe0ff", orbitRadius: 8.5, orbitSpeed: 1.18, planetRadius: 0.78, surface: "glass", hasRing: true },
+    visual: { color: "#8a6bff", accent: "#d4c8ff", orbitRadius: 8.5, orbitSpeed: 1.18, planetRadius: 0.78, surface: "glass", hasRing: true },
   },
   {
     slug: "ui-ux-design",
     index: 2,
     name: "UI/UX Design",
+    shortName: "UI/UX",
     tagline: "Interfaces that feel weightless.",
     description:
       "We design products people love to use. Research-led, accessible, and unmistakable: interfaces that strip away friction, lift conversion, and feel effortless on every device. No one should need a manual to navigate what we build.",
@@ -92,12 +96,13 @@ export const services: Service[] = [
       "Interactive prototype",
       "Design system and handoff",
     ],
-    visual: { color: "#ffcf33", accent: "#7dd3fc", orbitRadius: 11.4, orbitSpeed: 1.04, planetRadius: 0.8, surface: "accessible", hasRing: true },
+    visual: { color: "#ffc21a", accent: "#fff0b3", orbitRadius: 11.4, orbitSpeed: 1.04, planetRadius: 0.8, surface: "accessible", hasRing: true },
   },
   {
     slug: "web-development",
     index: 3,
     name: "Web Development",
+    shortName: "Web Dev",
     tagline: "Built for velocity. Engineered to convert.",
     description:
       "We design and build high-performance websites that load at light speed, rank where it matters, and turn visitors into customers. Every build is bespoke: no bloated templates orbiting your brand. Clean code, accessible markup, and a CMS your crew can pilot without us.",
@@ -119,12 +124,13 @@ export const services: Service[] = [
       "Analytics and tracking setup",
       "Performance and SEO report",
     ],
-    visual: { color: "#00f0ff", accent: "#ff4fd8", orbitRadius: 14.3, orbitSpeed: 0.92, planetRadius: 0.78, surface: "performance", hasRing: true },
+    visual: { color: "#00e1ff", accent: "#9ff6ff", orbitRadius: 14.3, orbitSpeed: 0.92, planetRadius: 0.78, surface: "performance", hasRing: true },
   },
   {
     slug: "mobile-apps",
     index: 4,
     name: "Mobile App Development",
+    shortName: "Mobile",
     tagline: "One mission. Two platforms. Zero compromise.",
     description:
       "From prototype to orbit, we ship cross-platform mobile apps with native feel and a fraction of the usual timeline. One codebase deploys to both App Store and Play Store: backend, auth, and payments wired in from ignition.",
@@ -146,12 +152,13 @@ export const services: Service[] = [
       "App store submission",
       "Maintenance and release plan",
     ],
-    visual: { color: "#9b5cff", accent: "#4dff88", orbitRadius: 17.2, orbitSpeed: 0.74, planetRadius: 0.66, surface: "mobile", hasRing: true },
+    visual: { color: "#ff2bb5", accent: "#ffb0e3", orbitRadius: 17.2, orbitSpeed: 0.74, planetRadius: 0.66, surface: "mobile", hasRing: true },
   },
   {
     slug: "seo",
     index: 5,
     name: "SEO",
+    shortName: "SEO",
     tagline: "Rise in the rankings. Stay in orbit.",
     description:
       "Technical, on-page, and content SEO that compounds over time. We fix what's dragging you down, target keywords that actually convert, and build the kind of authority that keeps pulling traffic into your gravitational field month after month.",
@@ -173,12 +180,13 @@ export const services: Service[] = [
       "On-page optimisation",
       "Monthly ranking reports",
     ],
-    visual: { color: "#31ff7a", accent: "#faff5a", orbitRadius: 20.1, orbitSpeed: 0.69, planetRadius: 0.72, surface: "seo", hasRing: true },
+    visual: { color: "#12d483", accent: "#9dffd0", orbitRadius: 20.1, orbitSpeed: 0.69, planetRadius: 0.72, surface: "seo", hasRing: true },
   },
   {
     slug: "digital-marketing",
     index: 6,
     name: "Digital Marketing",
+    shortName: "Marketing",
     tagline: "Full-spectrum coverage. Every channel locked in.",
     description:
       "Full-funnel campaigns that reach your audience across every frequency they're tuned into. We plan, create, launch, and optimise across every major channel, always measuring against the signals that matter to your bottom line, not vanity dashboards.",
@@ -200,12 +208,13 @@ export const services: Service[] = [
       "Multi-channel management",
       "Performance dashboard",
     ],
-    visual: { color: "#ff7a18", accent: "#ff2bd6", orbitRadius: 23.0, orbitSpeed: 0.62, planetRadius: 0.82, surface: "marketing", hasRing: true },
+    visual: { color: "#ff7f1a", accent: "#ffd08a", orbitRadius: 23.0, orbitSpeed: 0.62, planetRadius: 0.82, surface: "marketing", hasRing: true },
   },
   {
     slug: "paid-advertising",
     index: 7,
     name: "Paid Advertising",
+    shortName: "Ads",
     tagline: "Every dollar tracked. Every return maximised.",
     description:
       "We structure, launch, and manage paid campaigns built to maximise return on every unit of fuel you put in. Tight targeting, sharp creative, and relentless optimisation toward the cost-per-acquisition that makes the math work. No spend drifts into the void.",
@@ -227,12 +236,13 @@ export const services: Service[] = [
       "Retargeting funnels",
       "ROAS reporting",
     ],
-    visual: { color: "#ff2e63", accent: "#ffd166", orbitRadius: 25.9, orbitSpeed: 0.53, planetRadius: 0.7, surface: "ads", hasRing: true },
+    visual: { color: "#ff2448", accent: "#ffb08a", orbitRadius: 25.9, orbitSpeed: 0.53, planetRadius: 0.7, surface: "ads", hasRing: true },
   },
   {
     slug: "email-marketing",
     index: 8,
     name: "Email Marketing",
+    shortName: "Email",
     tagline: "Automated signals. Always transmitting.",
     description:
       "Email is still the highest-ROI channel, when the signal is right. We build automated sequences that nurture leads, recover abandoned carts, and turn one-time buyers into loyal customers, all wired into your CRM and transmitting around the clock.",
@@ -254,12 +264,13 @@ export const services: Service[] = [
       "CRM integration",
       "Performance reporting",
     ],
-    visual: { color: "#2dd4bf", accent: "#f472b6", orbitRadius: 28.8, orbitSpeed: 0.46, planetRadius: 0.62, surface: "email", hasRing: true },
+    visual: { color: "#3d7bff", accent: "#9cc2ff", orbitRadius: 28.8, orbitSpeed: 0.46, planetRadius: 0.62, surface: "email", hasRing: true },
   },
   {
     slug: "cloud-devops-infrastructure",
     index: 9,
     name: "Cloud & DevOps Infrastructure",
+    shortName: "Cloud",
     tagline: "Scalable architecture. Zero downtime.",
     description:
       "The system only pulls if it never goes dark. Enterprise-grade cloud infrastructure, CI/CD pipelines, and automated deployments engineered to scale effortlessly through any traffic spike your growth throws at it.",
@@ -281,7 +292,7 @@ export const services: Service[] = [
       "Infrastructure as Code (IaC)",
       "Monitoring and alert dashboard",
     ],
-    visual: { color: "#38bdf8", accent: "#a78bfa", orbitRadius: 31.7, orbitSpeed: 0.40, planetRadius: 0.75, surface: "cloud", hasRing: true },
+    visual: { color: "#b9e4ff", accent: "#eaf7ff", orbitRadius: 31.7, orbitSpeed: 0.40, planetRadius: 0.75, surface: "cloud", hasRing: true },
   },
 ];
 

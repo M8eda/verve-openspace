@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { CAMERA_END, CAMERA_START } from "@/lib/constants";
+import { CAMERA_END } from "@/lib/constants";
 import { services } from "@/data/services";
 import { getPlanetPosition } from "@/lib/planetPositions";
 import { isCoarsePointer, prefersReducedMotion } from "@/lib/device";
 import { pagerPosition } from "@/lib/journeyPager";
 import { isFreeMode } from "@/lib/freeMode";
+import { getFocus } from "@/lib/planetFocus";
+import { fixedOrbitTime, orbitAngle } from "@/lib/orbit";
 
 const UP = new THREE.Vector3(0, 1, 0);
 const WAYPOINT_COUNT = services.length + 2; // start + services + core
@@ -24,6 +26,24 @@ const STACKED_MAX_WIDTH = 768;
 const SIDE_SHIFT = 0.18;
 const STACKED_SHIFT = 0.2;
 
+/**
+ * Overview "drone shot": a tilted aerial view of the whole system that
+ * slowly circles it. The drone keeps pace with the first planet (plus a
+ * gentle sway), so it orbits with the system and the hand-off to stop 01 is
+ * always a short descent rather than a dive across the core.
+ */
+const DRONE_ELEVATION = THREE.MathUtils.degToRad(31);
+/** System radius the overview tries to keep in frame (outermost orbit ~32). */
+const DRONE_FRAME_RADIUS = 30;
+/** Narrow screens crop the outer orbits rather than shrink planets to dots. */
+const DRONE_STACKED_FRAME_RADIUS = 20;
+const DRONE_MIN_DISTANCE = 64;
+const DRONE_MAX_DISTANCE = 140;
+const DRONE_STACKED_MAX_DISTANCE = 110;
+/** Azimuth lead over the first planet, so it sits off-centre in the frame. */
+const DRONE_LEAD = 0.55;
+const FIRST_SERVICE = services[0];
+
 function smoothstep(x: number) {
   const t = THREE.MathUtils.clamp(x, 0, 1);
   return t * t * (3 - 2 * t);
@@ -31,21 +51,18 @@ function smoothstep(x: number) {
 
 /**
  * Off-centre projection so whatever the camera looks at renders beside the
- * journey terminal instead of behind it. Same 0..1 ramp as the terminal's
- * own fade, so the two move together. Only touches the projection when the
- * offset actually changes.
+ * journey (or EVA) terminal instead of behind it. `amount` is 0..1. Only
+ * touches the projection when the offset actually changes.
  */
 function applyLensShift(
   camera: THREE.Camera,
   width: number,
   height: number,
-  P: number,
-  free: boolean,
+  amount: number,
   last: { x: number; y: number; w: number; h: number },
 ) {
   if (!(camera instanceof THREE.PerspectiveCamera)) return;
 
-  const amount = free ? 0 : smoothstep((P - 0.6) / 0.4);
   const stacked = width <= STACKED_MAX_WIDTH;
   const x = stacked ? 0 : Math.round(-width * SIDE_SHIFT * amount);
   const y = stacked ? Math.round(height * STACKED_SHIFT * amount) : 0;
@@ -63,19 +80,26 @@ function applyLensShift(
   }
 }
 
+/** Camera distance that fits the system into the part of the frame the
+ *  terminal leaves free, for the current aspect ratio. */
+function droneDistance(aspect: number, fovDeg: number, stacked: boolean): number {
+  const halfW = Math.tan(THREE.MathUtils.degToRad(fovDeg) / 2) * aspect;
+  if (stacked) {
+    return THREE.MathUtils.clamp(DRONE_STACKED_FRAME_RADIUS / halfW, DRONE_MIN_DISTANCE, DRONE_STACKED_MAX_DISTANCE);
+  }
+  // The lens shift leaves roughly the right 64% of the half-width free.
+  return THREE.MathUtils.clamp(DRONE_FRAME_RADIUS / (halfW * 0.64), DRONE_MIN_DISTANCE, DRONE_MAX_DISTANCE);
+}
+
 export default function CameraRig() {
   const pointer = useRef({ x: 0, y: 0, sx: 0, sy: 0 });
   const mobileFrame = useMemo(() => isCoarsePointer(), []);
   const reduceMotion = useMemo(() => prefersReducedMotion(), []);
   const skipParallax = reduceMotion || mobileFrame;
 
-  const posPoints = useRef<THREE.Vector3[]>(
-    Array.from({ length: WAYPOINT_COUNT }, () => new THREE.Vector3()),
-  );
-  const lookPoints = useRef<THREE.Vector3[]>(
-    Array.from({ length: WAYPOINT_COUNT }, () => new THREE.Vector3()),
-  );
   const lensShift = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  const lensAmount = useRef(0);
+  const drone = useRef(new THREE.Vector3());
   const scratch = useRef({
     outward: new THREE.Vector3(),
     side: new THREE.Vector3(),
@@ -83,12 +107,26 @@ export default function CameraRig() {
     camLook: new THREE.Vector3(),
   });
 
+  // The curves keep references to their point arrays; useFrame rewrites the
+  // points in place every frame as the planets move.
   const posCurve = useMemo(
-    () => new THREE.CatmullRomCurve3(posPoints.current, false, "centripetal", 0.25),
+    () =>
+      new THREE.CatmullRomCurve3(
+        Array.from({ length: WAYPOINT_COUNT }, () => new THREE.Vector3()),
+        false,
+        "centripetal",
+        0.25,
+      ),
     [],
   );
   const lookCurve = useMemo(
-    () => new THREE.CatmullRomCurve3(lookPoints.current, false, "centripetal", 0.25),
+    () =>
+      new THREE.CatmullRomCurve3(
+        Array.from({ length: WAYPOINT_COUNT }, () => new THREE.Vector3()),
+        false,
+        "centripetal",
+        0.25,
+      ),
     [],
   );
 
@@ -105,26 +143,60 @@ export default function CameraRig() {
   useFrame((state, delta) => {
     const free = isFreeMode();
     const P = pagerPosition(); // 0..PAGE_COUNT-1 (0..12)
-    applyLensShift(state.camera, state.size.width, state.size.height, P, free, lensShift.current);
-    if (free) return;
     const dt = Math.min(delta, 0.05);
 
+    // In the journey the shift follows the terminal's own fade exactly; in
+    // EVA it eases in while a planet terminal is open.
+    const lensTarget = free ? (getFocus() ? 1 : 0) : smoothstep((P - 0.6) / 0.4);
+    lensAmount.current =
+      free && !reduceMotion ? THREE.MathUtils.damp(lensAmount.current, lensTarget, 5, dt) : lensTarget;
+    applyLensShift(state.camera, state.size.width, state.size.height, lensAmount.current, lensShift.current);
+    if (free) return;
+
+    const stacked = state.size.width <= STACKED_MAX_WIDTH;
+    const fov = state.camera instanceof THREE.PerspectiveCamera ? state.camera.fov : 38;
+    const distance = droneDistance(state.size.width / state.size.height, fov, stacked);
+    const clockT = reduceMotion ? fixedOrbitTime(FIRST_SERVICE) : state.clock.elapsedTime;
+    const sway = reduceMotion ? 0 : Math.sin(clockT * 0.07) * 0.22;
+    const azimuth = orbitAngle(FIRST_SERVICE, clockT) + DRONE_LEAD + sway;
+    // Same handedness as orbitPointAt: x = cos(angle), z = sin(angle).
+    const ground = Math.cos(DRONE_ELEVATION) * distance;
+    const dronePos = drone.current.set(
+      Math.cos(azimuth) * ground,
+      Math.sin(DRONE_ELEVATION) * distance,
+      Math.sin(azimuth) * ground,
+    );
+
     if (P <= 1) {
+      // Descend from the galaxy view straight into the drone orbit. The
+      // heading blends from +z (what lookAt falls back to when looking
+      // straight down) to the drone's, so the image never snaps its roll.
       const t = smoothstep(THREE.MathUtils.clamp(P, 0, 1));
-
-      const gy = THREE.MathUtils.lerp(GALAXY_CAM_Y, CAMERA_START.y, t);
-      const gz = THREE.MathUtils.lerp(GALAXY_CAM_Z, CAMERA_START.z, t);
-
-      state.camera.position.set(0, gy, gz);
+      let hx = Math.cos(azimuth) * t;
+      let hz = 1 - t + Math.sin(azimuth) * t;
+      const hl = Math.hypot(hx, hz);
+      if (hl < 1e-4) {
+        hx = 0;
+        hz = 1;
+      } else {
+        hx /= hl;
+        hz /= hl;
+      }
+      const r = ground * t;
+      state.camera.position.set(
+        hx * r,
+        THREE.MathUtils.lerp(GALAXY_CAM_Y, dronePos.y, t),
+        GALAXY_CAM_Z + hz * r,
+      );
       state.camera.lookAt(0, 0, 0);
 
       return;
     }
 
-    const pos = posPoints.current;
-    const look = lookPoints.current;
+    const pos = posCurve.points;
+    const look = lookCurve.points;
 
-    pos[0].set(CAMERA_START.x, CAMERA_START.y, CAMERA_START.z);
+    pos[0].copy(dronePos);
     look[0].set(0, 0, 0);
 
     for (let k = 0; k < services.length; k++) {

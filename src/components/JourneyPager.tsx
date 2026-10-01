@@ -63,6 +63,43 @@ export default function JourneyPager() {
     } else {
       window.scrollTo(0, 0);
     }
+
+    // Leaving home mid-journey (e.g. "Explore planet") must hand scrolling
+    // back, or the next page opens with smooth scroll still stopped.
+    return () => setEngaged(false);
+  }, []);
+
+  /** Eases the pager from its settled index to `target`, then settles there. */
+  const animateTo = useCallback((target: number, duration: number, source: "jump" | "scroll") => {
+    pagerState.locked = true;
+    pagerState.fromIndex = pagerState.index;
+    pagerState.toIndex = target;
+    pagerState.t = 0;
+
+    cancelTransitionRef.current?.();
+
+    const length = prefersReducedMotion() ? 1 : duration;
+    const startTime = performance.now();
+
+    cancelTransitionRef.current = subscribeFrame((now) => {
+      const rawProgress = Math.min(1, (now - startTime) / length);
+      pagerState.t = smoothstep(rawProgress);
+
+      if (rawProgress >= 1) {
+        pagerState.index = target;
+        pagerState.fromIndex = target;
+        pagerState.toIndex = target;
+        pagerState.t = 1;
+        if (target >= PAGE_COUNT - 1 && !completedRef.current) {
+          completedRef.current = true;
+          trackEvent("journey_completed", { source });
+        }
+        cooldownRef.current = performance.now() + 300;
+        pagerState.locked = false;
+        cancelTransitionRef.current?.();
+        cancelTransitionRef.current = null;
+      }
+    });
   }, []);
 
   const executeJump = useCallback((targetIndex: number, forceEngage?: boolean) => {
@@ -76,38 +113,8 @@ export default function JourneyPager() {
     const currentIdx = pagerState.toIndex;
     if (currentIdx === clampedTarget && pagerState.t === 1) return;
 
-    pagerState.locked = true;
-    pagerState.fromIndex = pagerState.index;
-    pagerState.toIndex = clampedTarget;
-    pagerState.t = 0;
-
-    const distance = Math.abs(clampedTarget - currentIdx);
-    cancelTransitionRef.current?.();
-
-    const duration = prefersReducedMotion() ? 1 : 700 + distance * 120;
-    const startTime = performance.now();
-
-    cancelTransitionRef.current = subscribeFrame((now) => {
-      const elapsed = now - startTime;
-      const rawProgress = Math.min(1, elapsed / duration);
-      pagerState.t = smoothstep(rawProgress);
-
-      if (rawProgress >= 1) {
-        pagerState.index = clampedTarget;
-        pagerState.fromIndex = clampedTarget;
-        pagerState.toIndex = clampedTarget;
-        pagerState.t = 1;
-        if (clampedTarget >= PAGE_COUNT - 1 && !completedRef.current) {
-          completedRef.current = true;
-          trackEvent("journey_completed", { source: "jump" });
-        }
-        cooldownRef.current = performance.now() + 300;
-        pagerState.locked = false;
-        cancelTransitionRef.current?.();
-        cancelTransitionRef.current = null;
-      }
-    });
-  }, []);
+    animateTo(clampedTarget, 700 + Math.abs(clampedTarget - currentIdx) * 120, "jump");
+  }, [animateTo]);
 
   useEffect(() => {
     globalJumpToPage = (targetIndex: number) => {
@@ -140,37 +147,8 @@ export default function JourneyPager() {
     // Subtle ping for navigation step
     playGlassTing({ frequency: 3200, volume: 0.01, decay: 0.05 });
 
-    pagerState.locked = true;
-    pagerState.fromIndex = currentIdx;
-    pagerState.toIndex = nextIdx;
-    pagerState.t = 0;
-
-    cancelTransitionRef.current?.();
-
-    const duration = prefersReducedMotion() ? 1 : 700;
-    const startTime = performance.now();
-
-    cancelTransitionRef.current = subscribeFrame((now) => {
-      const elapsed = now - startTime;
-      const rawProgress = Math.min(1, elapsed / duration);
-      pagerState.t = smoothstep(rawProgress);
-
-      if (rawProgress >= 1) {
-        pagerState.index = nextIdx;
-        pagerState.fromIndex = nextIdx;
-        pagerState.toIndex = nextIdx;
-        pagerState.t = 1;
-        if (nextIdx >= PAGE_COUNT - 1 && !completedRef.current) {
-          completedRef.current = true;
-          trackEvent("journey_completed", { source: "scroll" });
-        }
-        cooldownRef.current = performance.now() + 300;
-        pagerState.locked = false;
-        cancelTransitionRef.current?.();
-        cancelTransitionRef.current = null;
-      }
-    });
-  }, []);
+    animateTo(nextIdx, 700, "scroll");
+  }, [animateTo]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -239,10 +217,11 @@ export default function JourneyPager() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isFreeMode() || isContactOpen()) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       const active = document.activeElement;
-      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "SELECT")) {
-        return;
-      }
+      if (active?.closest("input, textarea, select, [contenteditable='true']")) return;
+      // Space presses the focused control; it must not also fly the camera.
+      if (e.key === " " && active?.closest("button, a[href], summary, [role='button'], [role='link']")) return;
 
       if (!engagedRef.current) {
         if ((e.key === "ArrowUp" || e.key === "PageUp") && pagerState.index >= PAGE_COUNT - 1 && window.scrollY <= 10) {

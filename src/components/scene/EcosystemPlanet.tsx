@@ -6,14 +6,19 @@ import * as THREE from "three";
 import { services } from "@/data/services";
 import { getPlanetPosition } from "@/lib/planetPositions";
 import { isWeakGPU } from "@/lib/device";
+import { hexToVec3 } from "@/lib/color";
+import { fixedOrbitTime as frozenOrbitTime, orbitAngle, orbitPointAt } from "@/lib/orbit";
+import { NOISE_GLSL } from "@/shaders/noise";
+import { PLANET_COMMON_GLSL } from "@/shaders/planetCommon";
+import Atmosphere from "./Atmosphere";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SERVICE = services.find((s) => s.slug === "branding-strategy")!;
 const RADIUS = 0.9;
 const OUTER_RING_RADIUS = RADIUS * 1.28;
 const INNER_RING_RADIUS = RADIUS * 1.11;
-const LIME_GREEN = "#cdf757";
-const STAR_BLUE = "#7dd3fc";
+const PLANET_COLOR = SERVICE.visual.color;
+const PLANET_ACCENT = SERVICE.visual.accent;
 
 const atlasVertex = /* glsl */ `
 varying vec3 vLocal;
@@ -29,22 +34,20 @@ void main() {
 }
 `;
 
+// Icy crystal world: faceted ice lit by the core, a beacon burning at the
+// north pole (the brand's north star) and constellation lights joining
+// audience, market and position across the night side.
 const atlasFragment = /* glsl */ `
 uniform float uTime;
 uniform vec3 uLightDir;
+uniform vec3 uColor;
+uniform vec3 uAccent;
 varying vec3 vLocal;
 varying vec3 vNormalW;
 varying vec3 vWorld;
 
-float hash21(vec2 p) {
-  p = fract(p * vec2(123.34, 456.21));
-  p += dot(p, p + 45.32);
-  return fract(p.x * p.y);
-}
-
-float circleMask(vec2 p, vec2 center, float radius, float soft) {
-  return 1.0 - smoothstep(radius, radius + soft, distance(p, center));
-}
+${NOISE_GLSL}
+${PLANET_COMMON_GLSL}
 
 float segmentMask(vec2 p, vec2 a, vec2 b, float width) {
   vec2 pa = p - a;
@@ -53,116 +56,84 @@ float segmentMask(vec2 p, vec2 a, vec2 b, float width) {
   return 1.0 - smoothstep(width, width * 2.4, length(pa - ba * h));
 }
 
-float gridLine(float value, float cells, float width) {
-  return 1.0 - smoothstep(width, width * 2.6, abs(fract(value * cells) - 0.5));
+float node(vec2 p, vec2 c, float r) {
+  return 1.0 - smoothstep(r, r * 2.2, distance(p, c));
 }
 
 void main() {
   vec3 n = normalize(vLocal);
-  vec3 N = normalize(vNormalW);
+  vec3 Ng = normalize(vNormalW);
   vec3 V = normalize(cameraPosition - vWorld);
+  vec3 L = normalize(uLightDir);
+  float ndl = dot(Ng, L);
+  float night = nightSide(ndl);
 
-  float theta = acos(clamp(n.y, -1.0, 1.0));
-  float phi = atan(n.z, n.x);
-  float uCoord = phi / 6.2831853 + 0.5;
-  float vCoord = theta / 3.14159265;
-
-  vec3 voidInk = vec3(0.004, 0.004, 0.018);
-  vec3 deepViolet = vec3(0.034, 0.020, 0.090);
-  vec3 chartBlue = vec3(0.075, 0.180, 0.270);
-  vec3 lime = vec3(0.804, 0.969, 0.341);
-  vec3 cyan = vec3(0.490, 0.827, 0.988);
-  vec3 starlight = vec3(0.960, 0.985, 0.920);
-  vec3 magenta = vec3(0.640, 0.380, 1.000);
-
-  float rawLight = dot(N, normalize(uLightDir));
-  float diffuse = pow(max(rawLight, 0.0), 0.82);
-  float terminator = smoothstep(-0.24, 0.82, rawLight);
-  float rim = pow(1.0 - max(dot(N, V), 0.0), 2.05);
-  float chartLight = diffuse * 0.52 + rim * 0.42 + 0.24;
-
-  float nebula = sin((uCoord * 2.7 + vCoord * 3.8) * 6.2831853 + sin(uCoord * 9.0) * 0.6) * 0.5 + 0.5;
-  vec3 color = mix(voidInk, deepViolet, smoothstep(-0.82, 0.86, n.y));
-  color = mix(color, chartBlue, nebula * 0.14);
-  color *= 0.50 + terminator * 0.62;
-
-  // Faint star-chart coordinates: latitude, longitude, and strategic sector lines.
-  float latitude = gridLine(vCoord, 9.0, 0.006);
-  float longitude = gridLine(uCoord + sin(vCoord * 6.2831853) * 0.006, 18.0, 0.005);
-  float equator = 1.0 - smoothstep(0.003, 0.013, abs(vCoord - 0.5));
-  float meridian = 1.0 - smoothstep(0.003, 0.013, abs(fract(uCoord + 0.125) - 0.5));
-  float sectorGrid = max(max(latitude * 0.30, longitude * 0.28), max(equator, meridian) * 0.86);
-  color += cyan * sectorGrid * 0.22 * chartLight;
-  color += lime * max(equator, meridian) * 0.18 * chartLight;
-
-  // Background market stars: tiny, numerous, and procedural so the map feels celestial.
+  // Crystal facets: flat plates split by glowing fracture seams.
   #if QUALITY_TIER == 0
-  vec2 starGrid = vec2(uCoord, vCoord) * vec2(26.0, 13.0);
+  float plate = fbm2(n * 3.0);
+  float seam = 1.0 - smoothstep(0.0, 0.04, abs(fract(plate * 5.0) - 0.5) - 0.44);
+  float facet = fract(plate * 5.0);
   #else
-  vec2 starGrid = vec2(uCoord, vCoord) * vec2(42.0, 21.0);
+  vec3 cell = voronoi3D(n * 3.2);
+  float seam = 1.0 - smoothstep(0.0, 0.035, cell.y);
+  float facet = cell.z;
+  float plate = cell.x;
   #endif
-  vec2 starId = floor(starGrid);
-  vec2 starF = fract(starGrid);
-  float starRand = hash21(starId + 17.0);
-  vec2 starPoint = vec2(0.18 + hash21(starId + 2.1) * 0.64, 0.18 + hash21(starId + 8.4) * 0.64);
-  float microStar = circleMask(starF, starPoint, 0.018, 0.014) * step(0.84, starRand);
-  float microTwinkle = 0.72 + 0.28 * sin(uTime * 1.6 + starRand * 12.0);
-  color += mix(cyan, starlight, starRand) * microStar * microTwinkle * 0.42 * chartLight;
+  float frost = vnoise(n * 22.0);
 
-  // Constellation cells: audience, market, competitors, and position connected into a map.
+  vec3 ice = vec3(0.78, 0.82, 0.95);
+  vec3 deep = uColor * 0.32;
+  vec3 albedo = mix(deep, mix(ice, uAccent, 0.35), 0.35 + facet * 0.45);
+  albedo = mix(albedo, ice, smoothstep(0.55, 0.95, abs(n.y)) * 0.6);
+  albedo *= 0.85 + frost * 0.2;
+
+  // Each facet tilts its own way, so the core glints off individual plates.
+  vec3 tilt = vec3(hash31(vec3(facet * 91.0)), hash31(vec3(facet * 37.0 + 5.0)), hash31(vec3(facet * 13.0 + 9.0))) - 0.5;
+  vec3 N = normalize(perturbNormal(Ng, vWorld, (plate * 0.5 - seam * 0.4 + frost * 0.1) * 0.03) + tilt * 0.18);
+  vec3 color = litSurface(albedo, N, L, V, ndl, 60.0, 0.45);
+
+  // Light trapped in the ice leaks out of the seams, strongest at night.
+  color += mix(uColor, uAccent, 0.4) * seam * (0.05 + night * 0.4);
+
+  // Constellations on the cube faces (no pole pinching).
+  float face;
   #if QUALITY_TIER == 0
-  vec2 atlasGrid = vec2(uCoord, vCoord) * vec2(5.5, 3.2);
+  vec2 grid = cubeUV(n, face) * 2.0;
   #else
-  vec2 atlasGrid = vec2(uCoord, vCoord) * vec2(7.2, 4.2);
+  vec2 grid = cubeUV(n, face) * 3.0;
   #endif
-  vec2 cellId = floor(atlasGrid);
-  vec2 cellF = fract(atlasGrid);
-  float cellRand = hash21(cellId + 2.7);
-  float constellationOn = step(0.48, cellRand);
-  vec2 audience = vec2(0.18 + hash21(cellId + 1.1) * 0.24, 0.24 + hash21(cellId + 4.8) * 0.48);
-  vec2 market = vec2(0.42 + hash21(cellId + 7.5) * 0.22, 0.18 + hash21(cellId + 3.2) * 0.62);
-  vec2 competitor = vec2(0.68 + hash21(cellId + 8.8) * 0.16, 0.28 + hash21(cellId + 6.3) * 0.46);
-  vec2 position = vec2(0.46 + hash21(cellId + 11.2) * 0.22, 0.62 + hash21(cellId + 14.6) * 0.20);
-  float links = segmentMask(cellF, audience, market, 0.0045)
-              + segmentMask(cellF, market, competitor, 0.0045)
-              + segmentMask(cellF, market, position, 0.0045)
-              + segmentMask(cellF, audience, position, 0.0035);
-  float audienceNode = circleMask(cellF, audience, 0.024, 0.014);
-  float marketNode = circleMask(cellF, market, 0.019, 0.012);
-  float competitorNode = circleMask(cellF, competitor, 0.016, 0.010);
-  float positionNode = circleMask(cellF, position, 0.030, 0.016);
-  float nodeGlow = audienceNode + marketNode + competitorNode + positionNode;
-  float activePulse = 0.86 + 0.14 * sin(uTime * 1.15 + cellRand * 8.0);
-  color += cyan * links * constellationOn * 0.36 * chartLight;
-  color += starlight * (audienceNode + marketNode) * constellationOn * 0.82 * chartLight;
-  color += magenta * competitorNode * constellationOn * 0.45 * chartLight;
-  color += lime * positionNode * constellationOn * activePulse * 1.15 * chartLight;
-  color += lime * nodeGlow * constellationOn * 0.10 * rim;
+  vec2 id = floor(grid);
+  vec2 f = fract(grid);
+  float on = step(0.4, hash31(vec3(id, face + 2.7)));
+  vec2 audience = vec2(0.2, 0.3) + vec2(hash31(vec3(id, face + 1.1)), hash31(vec3(id, face + 4.8))) * 0.25;
+  vec2 market = vec2(0.45, 0.2) + vec2(hash31(vec3(id, face + 7.5)), hash31(vec3(id, face + 3.2))) * 0.3;
+  vec2 position = vec2(0.6, 0.6) + vec2(hash31(vec3(id, face + 11.2)), hash31(vec3(id, face + 14.6))) * 0.2;
+  float links = segmentMask(f, audience, market, 0.006)
+              + segmentMask(f, market, position, 0.006)
+              + segmentMask(f, audience, position, 0.005);
+  float stars = node(f, audience, 0.018) + node(f, market, 0.015) + node(f, position, 0.024);
+  #if QUALITY_TIER == 1
+  float twinkle = 0.8 + 0.2 * sin(uTime * 1.4 + hash31(vec3(id, face)) * 12.0);
+  #else
+  float twinkle = 1.0;
+  #endif
+  color += on * (uAccent * links * 0.35 + mix(uAccent, vec3(1.0), 0.5) * stars * 1.4 * twinkle) * (night + 0.06);
 
-  // Long-range brand routes wrap around the globe like strategy lines on an astrolabe.
-  float routePathA = abs(vCoord - (0.51 + sin((uCoord * 1.65 + uTime * 0.020) * 6.2831853) * 0.052));
-  float routePathB = abs(vCoord - (0.30 + sin((uCoord * 1.10 - uTime * 0.017 + 0.35) * 6.2831853) * 0.046));
-  float routePathC = abs(vCoord - (0.69 + sin((uCoord * 1.36 + 0.62) * 6.2831853) * 0.035));
-  float dashA = smoothstep(0.08, 0.19, fract(uCoord * 30.0)) * (1.0 - smoothstep(0.58, 0.86, fract(uCoord * 30.0)));
-  float dashB = smoothstep(0.06, 0.17, fract((1.0 - uCoord) * 24.0 + 0.18)) * (1.0 - smoothstep(0.60, 0.84, fract((1.0 - uCoord) * 24.0 + 0.18)));
-  float routeA = (1.0 - smoothstep(0.004, 0.015, routePathA)) * dashA * smoothstep(0.08, 0.20, vCoord) * (1.0 - smoothstep(0.82, 0.94, vCoord));
-  float routeB = (1.0 - smoothstep(0.004, 0.014, routePathB)) * dashB * smoothstep(0.08, 0.21, vCoord) * (1.0 - smoothstep(0.66, 0.86, vCoord));
-  float routeC = (1.0 - smoothstep(0.003, 0.012, routePathC)) * smoothstep(0.10, 0.24, fract(uCoord * 18.0)) * (1.0 - smoothstep(0.62, 0.88, fract(uCoord * 18.0)));
-  float routePulseA = exp(-pow(fract(uCoord - uTime * 0.062) - 0.5, 2.0) * 120.0) * (1.0 - smoothstep(0.004, 0.018, routePathA));
-  float routePulseB = exp(-pow(fract(1.0 - uCoord - uTime * 0.048 + 0.28) - 0.5, 2.0) * 125.0) * (1.0 - smoothstep(0.004, 0.016, routePathB));
-  color += (lime * routeA * 0.54 + cyan * routeB * 0.40 + magenta * routeC * 0.18) * chartLight;
-  color += lime * routePulseA * 1.00 * chartLight + starlight * routePulseB * 0.58 * chartLight;
+  // The polar beacon: a hot core with a halo that breathes.
+  float pole = n.y;
+  #if QUALITY_TIER == 1
+  float pulse = 0.8 + 0.2 * sin(uTime * 1.35);
+  #else
+  float pulse = 0.9;
+  #endif
+  float halo = pow(max(pole, 0.0), 60.0);
+  float core = smoothstep(0.994, 0.999, pole);
+  float beam = (1.0 - smoothstep(0.0, 0.015, abs(fract((pole - uTime * 0.02) * 30.0) - 0.5) - 0.48))
+             * smoothstep(0.85, 0.97, pole) * (1.0 - core);
+  color += uColor * halo * 1.4 * pulse + mix(uAccent, vec3(1.0), 0.6) * core * 3.0 * pulse;
+  color += uAccent * beam * 0.25;
 
-  // One bright positioning beacon anchors the constellation map without becoming a compass.
-  vec3 beaconDir = normalize(vec3(-0.30, 0.62, 0.72));
-  float beaconDot = dot(n, beaconDir);
-  float beaconHalo = pow(max(beaconDot, 0.0), 32.0);
-  float beaconCore = smoothstep(0.992, 0.999, beaconDot);
-  float beaconPulse = 0.84 + 0.16 * sin(uTime * 1.35);
-  color += lime * beaconHalo * 0.52 * beaconPulse;
-  color += starlight * beaconCore * 1.9 * beaconPulse;
-
-  color += lime * rim * 0.34 + cyan * rim * 0.18;
+  color += atmosphereGlow(Ng, V, ndl, mix(uColor, uAccent, 0.5), 0.9);
 
   gl_FragColor = vec4(color, 1.0);
   #include <tonemapping_fragment>
@@ -182,7 +153,7 @@ export default function EcosystemPlanet({ reduceMotion = false }: { reduceMotion
   const ringTube = lowPower ? 0.012 : 0.017;
   const ringSegments = lowPower ? 80 : 144;
 
-  const { atlasMaterial, gyroRingMaterials } = useMemo(() => {
+  const { atlasMaterial, gyroRingMaterials, beaconMaterial, beamMaterial } = useMemo(() => {
     const atlasMaterial = new THREE.ShaderMaterial({
       vertexShader: atlasVertex,
       fragmentShader: atlasFragment,
@@ -192,6 +163,8 @@ export default function EcosystemPlanet({ reduceMotion = false }: { reduceMotion
       uniforms: {
         uTime: { value: 0 },
         uLightDir: { value: new THREE.Vector3(0.6, 0.9, 0.4).normalize() },
+        uColor: { value: hexToVec3(PLANET_COLOR) },
+        uAccent: { value: hexToVec3(PLANET_ACCENT) },
       },
       depthWrite: true,
       depthTest: true,
@@ -215,16 +188,30 @@ export default function EcosystemPlanet({ reduceMotion = false }: { reduceMotion
     };
 
     const gyroRingMaterials = [
-      makeGyroMaterial(LIME_GREEN, lowPower ? 0.30 : 0.42, lowPower ? 0.12 : 0.22),
-      makeGyroMaterial(STAR_BLUE, lowPower ? 0.22 : 0.32, lowPower ? 0.08 : 0.16),
+      makeGyroMaterial(PLANET_COLOR, lowPower ? 0.30 : 0.42, lowPower ? 0.12 : 0.22),
+      makeGyroMaterial(PLANET_ACCENT, lowPower ? 0.22 : 0.32, lowPower ? 0.08 : 0.16),
     ];
 
-    return { atlasMaterial, gyroRingMaterials };
+    // The beacon burns above the bloom threshold so it reads at any distance.
+    const beaconMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(PLANET_ACCENT).multiplyScalar(3),
+      toneMapped: false,
+    });
+    const beamMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(PLANET_COLOR).multiplyScalar(1.6),
+      transparent: true,
+      opacity: 0.35,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+    });
+
+    return { atlasMaterial, gyroRingMaterials, beaconMaterial, beamMaterial };
   }, [lowPower]);
 
   const lightDir = useRef(new THREE.Vector3());
 
-  const fixedOrbitTime = SERVICE.index * 5.25;
+  const fixedOrbitTime = frozenOrbitTime(SERVICE);
 
   // ── Orbit animation — mirrors Planet.tsx orbit logic exactly ───────────────
   useFrame(({ clock }, delta) => {
@@ -232,23 +219,13 @@ export default function EcosystemPlanet({ reduceMotion = false }: { reduceMotion
     const dt = reduceMotion ? 0 : delta;
     atlasMaterial.uniforms.uTime.value = t;
 
-    const s = SERVICE;
-    const phase = s.index * 1.37;
-    const angle = t * s.visual.orbitSpeed * 0.075 + phase;
-    const ellipse = 0.74 + (s.index % 3) * 0.08;
-    const inclination = Math.sin(s.index * 1.91) * 0.34;
-    const x = Math.cos(angle) * s.visual.orbitRadius;
-    const flatZ = Math.sin(angle) * s.visual.orbitRadius * ellipse;
-    const yBase = Math.sin(angle + phase * 0.5) * s.visual.orbitRadius * 0.1 + Math.sin(s.index * 2.2) * 0.8;
-    const z = flatZ * Math.cos(inclination) - yBase * Math.sin(inclination);
-    const y = flatZ * Math.sin(inclination) + yBase * Math.cos(inclination);
+    orbitPointAt(SERVICE, orbitAngle(SERVICE, t), stored);
 
     if (groupRef.current) {
-      groupRef.current.position.set(x, y, z);
-      stored.set(x, y, z);
+      groupRef.current.position.copy(stored);
 
       // Light comes from the direction of the VerveCore (origin).
-      lightDir.current.set(-x, -y, -z).normalize();
+      lightDir.current.copy(stored).negate().normalize();
       atlasMaterial.uniforms.uLightDir.value.copy(lightDir.current);
     }
 
@@ -256,6 +233,9 @@ export default function EcosystemPlanet({ reduceMotion = false }: { reduceMotion
     if (spinRef.current) {
       spinRef.current.rotation.y += dt * 0.09;
     }
+
+    const beaconPulse = reduceMotion ? 0.9 : 0.8 + 0.2 * Math.sin(t * 1.35);
+    beamMaterial.opacity = 0.35 * beaconPulse;
 
     const slowPulse = 0.5 + 0.5 * Math.sin(t * 0.85);
     const gyroPulse = lowPower ? 0.88 + slowPulse * 0.05 : 0.94 + slowPulse * 0.06;
@@ -287,17 +267,27 @@ export default function EcosystemPlanet({ reduceMotion = false }: { reduceMotion
     return () => {
       atlasMaterial.dispose();
       for (const material of gyroRingMaterials) material.dispose();
+      beaconMaterial.dispose();
+      beamMaterial.dispose();
     };
-  }, [atlasMaterial, gyroRingMaterials]);
+  }, [atlasMaterial, gyroRingMaterials, beaconMaterial, beamMaterial]);
 
   return (
     <group ref={groupRef}>
       <group ref={spinRef}>
-        {/* North-star cartography surface. */}
+        {/* Icy crystal surface with the north-star beacon at the pole. */}
         <mesh material={atlasMaterial} renderOrder={1}>
           <sphereGeometry args={[RADIUS, shellSegments, shellSegments]} />
         </mesh>
+        {/* Polar beacon: the brand's north star, with a beam pointing out. */}
+        <mesh material={beaconMaterial} position={[0, RADIUS * 1.01, 0]}>
+          <sphereGeometry args={[RADIUS * 0.035, 12, 8]} />
+        </mesh>
+        <mesh material={beamMaterial} position={[0, RADIUS * 1.2, 0]}>
+          <cylinderGeometry args={[RADIUS * 0.003, RADIUS * 0.02, RADIUS * 0.36, 10, 1, true]} />
+        </mesh>
       </group>
+      <Atmosphere radius={RADIUS} color={PLANET_COLOR} strength={0.7} segments={lowPower ? 32 : 64} />
 
       {/* Tight rounded gyroscope rings stay as the navigation/calibration frame. */}
       <group ref={gyroRef} renderOrder={2}>

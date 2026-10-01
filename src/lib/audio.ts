@@ -11,6 +11,38 @@ type WindowWithLegacyAudioContext = Window & {
 
 let audioCtx: AudioContext | null = null;
 
+const SOUND_KEY = "verve:sound";
+let soundOn: boolean | null = null;
+const soundListeners = new Set<(on: boolean) => void>();
+
+/** Interface sounds stay off until the visitor turns them on (remembered per browser). */
+export function isSoundOn(): boolean {
+  if (typeof window === "undefined") return false;
+  if (soundOn === null) {
+    try {
+      soundOn = window.localStorage.getItem(SOUND_KEY) === "on";
+    } catch {
+      soundOn = false;
+    }
+  }
+  return soundOn;
+}
+
+export function setSoundOn(on: boolean) {
+  soundOn = on;
+  try {
+    window.localStorage.setItem(SOUND_KEY, on ? "on" : "off");
+  } catch {
+    // Private mode etc. — the choice lasts for this visit only.
+  }
+  soundListeners.forEach((fn) => fn(on));
+}
+
+export function subscribeSound(fn: (on: boolean) => void): () => void {
+  soundListeners.add(fn);
+  return () => soundListeners.delete(fn);
+}
+
 function getContext() {
   if (!audioCtx) {
     const AudioContextConstructor = window.AudioContext || (window as WindowWithLegacyAudioContext).webkitAudioContext;
@@ -21,7 +53,7 @@ function getContext() {
 }
 
 export const playGlassTing = (options: { frequency?: number; volume?: number; decay?: number } = {}) => {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !isSoundOn()) return;
 
   try {
     const ctx = getContext();

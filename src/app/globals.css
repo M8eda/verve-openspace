@@ -2,6 +2,7 @@
   --void: #01020a;
   --ink: #eef3ef;
   --ink-muted: rgba(238, 243, 239, 0.62);
+  --ink-soft: rgba(238, 243, 239, 0.56);
   --emerald: #cdf757;
   --accent-green: #cdf757;
   --pad: clamp(1.25rem, 4vw, 4rem);
@@ -208,6 +209,7 @@ html.lenis body {
 
   .glass, .service-block, .core-block,
   .core-cta, .contact-glass, .contact-thanks, .journey-hud-card, .header-link,
+  .header-eva-dot::after,
   .service-cta-button, .contact-submit, .assembly-word,
   .scroll-indicator.reveal-delayed, .plasma-text {
     animation: none !important;
@@ -285,6 +287,70 @@ html.lenis body {
     0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
+/* EVA entry point: a live status dot, plus a beacon pulse until first use */
+.header-eva {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.header-eva-dot {
+  position: relative;
+  z-index: 1;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 8px rgba(205, 247, 87, 0.8);
+}
+.header-eva-sub { color: var(--ink-muted); }
+.header-eva.is-new .header-eva-dot::after {
+  content: "";
+  position: absolute;
+  inset: -0.25rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--emerald);
+  animation: hud-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.header-eva.is-new {
+  animation: eva-beacon 2.4s ease-in-out infinite;
+}
+@keyframes eva-beacon {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(205, 247, 87, 0.2),
+      0 0 16px rgba(205, 247, 87, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(205, 247, 87, 0.55),
+      0 0 30px rgba(205, 247, 87, 0.45);
+  }
+}
+@media (max-width: 480px) {
+  .header-eva-sub { display: none; }
+}
+
+/* Sound toggle: a round icon button matching the header pills */
+.header-sound {
+  display: inline-grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  cursor: pointer;
+}
+.header-sound svg {
+  position: relative;
+  z-index: 1;
+}
+.header-sound[aria-pressed="false"] { color: var(--ink-muted); }
+@media (max-width: 480px) {
+  .header-actions { gap: 0.5rem; }
+  .header-link { padding: 0.55rem 0.9rem; }
+  .header-sound { width: 2.1rem; height: 2.1rem; padding: 0; }
+}
+
 a:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--emerald);
@@ -326,6 +392,12 @@ button:focus-visible {
     padding: 0.45rem 0.7rem;
     font-size: 0.78rem;
   }
+
+  .header-sound {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+  }
 }
 
 /* ============================================================
@@ -349,8 +421,7 @@ button:focus-visible {
   pointer-events: none !important;
 }
 
-.hero-content,
-.hero-card {
+.hero-content {
   max-width: 68rem;
   padding: 0;
   background: transparent;
@@ -412,17 +483,6 @@ button:focus-visible {
 .hero-line-1 .assembly-word:nth-child(3) { --x: -40px; --y: -100px; --z: 400px; --r: 25deg; }
 .hero-line-1 .assembly-word:nth-child(4) { --x: 60px; --y: 80px; --z: 150px; --r: -20deg; }
 .hero-line-1 .assembly-word:nth-child(5) { --x: -100px; --y: -20px; --z: 250px; --r: 12deg; }
-
-.hero-line-2 .assembly-word:nth-child(1) { --x: 90px; --y: 120px; --z: 350px; --r: -15deg; }
-.hero-line-2 .assembly-word:nth-child(2) { --x: -150px; --y: -40px; --z: 280px; --r: 20deg; }
-.hero-line-2 .assembly-word:nth-child(3) { --x: 40px; --y: -90px; --z: 450px; --r: -25deg; }
-.hero-line-2 .assembly-word:nth-child(4) { --x: -60px; --y: 70px; --z: 320px; --r: 18deg; }
-.hero-line-3 .assembly-word:nth-child(1) { --x: 70px; --y: -60px; --z: 260px; --r: -12deg; }
-.hero-line-3 .assembly-word:nth-child(2) { --x: -90px; --y: 110px; --z: 340px; --r: 16deg; }
-.hero-line-3 .assembly-word:nth-child(3) { --x: 120px; --y: 45px; --z: 230px; --r: -18deg; }
-.hero-line-3 .assembly-word:nth-child(4) { --x: -50px; --y: -120px; --z: 420px; --r: 22deg; }
-.hero-line-3 .assembly-word:nth-child(5) { --x: 95px; --y: -80px; --z: 310px; --r: -14deg; }
-.hero-line-3 .assembly-word:nth-child(6) { --x: -120px; --y: 55px; --z: 380px; --r: 20deg; }
 
 .hero-support {
   margin: 1.1rem 0 0;
@@ -833,29 +893,115 @@ button:focus-visible {
 }
 .journey-terminal[data-phase="typing"] .terminal-cursor { animation: none; }
 
-.terminal-option {
+.terminal-options {
   position: relative;
   z-index: 4;
-  display: inline-block;
-  margin-top: 1rem;
-  padding: 0.1rem 0.3rem 0;
-  color: var(--phosphor);
-  text-decoration: none;
-  text-transform: uppercase;
   opacity: var(--content);
+}
+
+.terminal-option,
+.terminal-menu-item {
+  display: inline-block;
+  padding: 0.1rem 0.3rem 0;
+  border: 0;
+  background: none;
+  color: var(--phosphor);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-decoration: none;
+  text-shadow: inherit;
+  text-transform: uppercase;
+  cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
+.terminal-option { margin-top: 1rem; }
 .terminal-option:hover,
-.terminal-option:focus-visible {
+.terminal-option:focus-visible,
+.terminal-option.is-armed,
+.terminal-menu-item:hover,
+.terminal-menu-item:focus-visible {
   background: var(--phosphor);
   color: #05080a;
   text-shadow: none;
   outline: none;
 }
 .terminal-option:hover .terminal-cursor,
-.terminal-option:focus-visible .terminal-cursor {
+.terminal-option:focus-visible .terminal-cursor,
+.terminal-option.is-armed .terminal-cursor {
   background: #05080a;
   box-shadow: none;
+}
+.terminal-option.is-armed {
+  animation: terminal-armed 0.9s steps(2, end) infinite;
+}
+
+/* Numbered main menu: [1] BEGIN JOURNEY ... ENTER OPTION: [ ]_ */
+.terminal-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.1rem;
+  margin-top: 0.85rem;
+}
+.terminal-menu-item {
+  margin-left: -0.3rem;
+}
+.terminal-menu-key {
+  margin-right: 0.45em;
+  opacity: 0.7;
+}
+.terminal-menu-item:hover .terminal-menu-key,
+.terminal-menu-item:focus-visible .terminal-menu-key {
+  opacity: 1;
+}
+.terminal-input {
+  margin-top: 0.7rem;
+  text-transform: uppercase;
+}
+.terminal-input-slot {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 0.3em;
+  text-align: left;
+}
+.terminal-input-slot .terminal-cursor { margin-left: 0; }
+
+/* Scroll nudge: blinks in on the welcome screen after a few idle seconds,
+   or sits dim under planet screens once their text is done. */
+.terminal-hint {
+  position: relative;
+  z-index: 1;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  text-transform: uppercase;
+  transition: opacity 0.4s ease;
+}
+.terminal-hint.is-visible {
+  height: auto;
+  margin-top: 0.75rem;
+  opacity: calc(var(--content) * 0.95);
+}
+.terminal-hint[data-kind="primary"].is-visible {
+  animation: terminal-hint-blink 1.6s steps(1, end) infinite;
+}
+.terminal-hint[data-kind="subtle"] {
+  font-size: 0.78em;
+  letter-spacing: 0.06em;
+}
+.terminal-hint[data-kind="subtle"].is-visible {
+  opacity: calc(var(--content) * 0.42);
+}
+.terminal-hint[data-kind="none"] { display: none; }
+
+@keyframes terminal-hint-blink {
+  0%, 69% { opacity: calc(var(--content) * 0.95); }
+  70%, 100% { opacity: calc(var(--content) * 0.25); }
+}
+
+@keyframes terminal-armed {
+  0%, 49% { box-shadow: 0 0 14px color-mix(in srgb, var(--phosphor) 70%, transparent); }
+  50%, 100% { box-shadow: 0 0 4px color-mix(in srgb, var(--phosphor) 40%, transparent); }
 }
 
 .terminal-plate {
@@ -926,6 +1072,8 @@ button:focus-visible {
   .terminal-header { margin-bottom: 0.5rem; font-size: 0.95rem; }
   .terminal-line-hi { font-size: 1.22em; }
   .terminal-option { margin-top: 0.7rem; }
+  .terminal-menu { gap: 0.1rem 0.8rem; margin-top: 0.6rem; }
+  .terminal-input { margin-top: 0.45rem; }
   .terminal-plate { margin-top: 0.3rem; font-size: 0.72rem; }
 }
 
@@ -933,6 +1081,8 @@ button:focus-visible {
   .terminal-screen::before,
   .terminal-cursor,
   .terminal-led,
+  .terminal-option.is-armed,
+  .terminal-hint.is-visible,
   .terminal-screen.is-flicker,
   .terminal-tag.is-flicker {
     animation: none !important;
@@ -964,8 +1114,6 @@ button:focus-visible {
   .hero-title,
   .hero-line,
   .hero-line-1,
-  .hero-line-2,
-  .hero-line-3,
   .hero-support,
   .hero-subtitle,
   .assembly-word,
@@ -1030,12 +1178,17 @@ button:focus-visible {
 }
 
 /* ============================================================
-   Service detail page — glass panels
+   Service detail page — planet data terminal
+   --phosphor is the planet colour (set on .service-page). The
+   terminal font is for chrome (bars, headings, labels); body
+   copy stays in the sans font for readability.
    ============================================================ */
 .service-page {
+  --phosphor: #cdf757;
+  --term-font: var(--font-terminal), ui-monospace, Consolas, monospace;
   position: relative;
   z-index: 1;
-  max-width: 46rem;
+  max-width: 48rem;
   margin: 0 auto;
   padding: clamp(6rem, 12vh, 9rem) var(--pad) 8rem;
 }
@@ -1053,111 +1206,251 @@ button:focus-visible {
 .service-back:hover {
   color: var(--ink);
 }
+.service-page .service-back {
+  margin-bottom: 2rem;
+  font-family: var(--term-font);
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.service-page .service-back:hover {
+  color: var(--phosphor);
+}
 
-.service-eyebrow {
-  display: block;
-  color: var(--emerald);
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+/* A pane is a phosphor screen: header bar in the planet colour on top,
+   scanlines over a dark tinted glass body. */
+.service-pane {
+  position: relative;
+  overflow: hidden;
+  margin-top: 2rem;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 42%, transparent);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 0%,
+      color-mix(in srgb, var(--phosphor) 8%, rgba(5, 8, 10, 0.78)) 0%,
+      rgba(4, 6, 7, 0.86) 70%);
+  backdrop-filter: var(--glass-blur-lg);
+  -webkit-backdrop-filter: var(--glass-blur-lg);
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 32px color-mix(in srgb, var(--phosphor) 12%, transparent);
+}
+/* The shared glass shimmer would tint every pane lime */
+.service-pane::before { display: none; }
+.service-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+}
+
+.service-pane-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1.1rem 0.4rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--phosphor) 30%, transparent);
+  color: var(--phosphor);
+  font-family: var(--term-font);
+  font-size: 1.15rem;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--phosphor) 55%, transparent);
+}
+
+/* Inverse-video label, same as the journey terminal tag */
+.service-pane-tag {
+  min-width: 0;
+  padding: 0.05rem 0.5rem 0;
+  background: var(--phosphor);
+  color: #05080a;
+  text-shadow: none;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--phosphor) 55%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.service-pane-meta {
+  flex-shrink: 0;
+  opacity: 0.6;
+  font-size: 0.92em;
+  white-space: nowrap;
+}
+
+.service-pane-body {
+  position: relative;
+  z-index: 1;
+  padding: 1.4rem 1.5rem 1.6rem;
+}
+
+.service-hero.service-pane {
+  margin-top: 0;
+}
+.service-hero .service-pane-bar {
+  background: color-mix(in srgb, var(--phosphor) 10%, transparent);
+}
+
+.service-prompt {
+  color: var(--phosphor);
+}
+
+.service-boot {
+  margin: 0 0 0.6rem;
+  color: color-mix(in srgb, var(--phosphor) 80%, white);
+  font-family: var(--term-font);
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--phosphor) 50%, transparent);
+}
+
+.service-headline {
+  position: relative;
+  margin: 0;
+  color: var(--phosphor);
+  font-family: var(--term-font);
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 1px color-mix(in srgb, var(--phosphor) 80%, white),
+    0 0 18px color-mix(in srgb, var(--phosphor) 55%, transparent);
+}
+.service-headline-rest { visibility: hidden; }
+
+.service-headline-cursor {
+  display: inline-block;
+  width: 0.45em;
+  height: 0.8em;
+  margin-left: 0.06em;
+  vertical-align: -0.04em;
+  background: var(--phosphor);
+  box-shadow: 0 0 10px var(--phosphor);
+  animation: terminal-blink 1s steps(1, end) infinite;
+}
+.service-headline-cursor.is-typing { animation: none; }
+
+.service-tagline {
+  margin: 1.1rem 0 0;
+  color: color-mix(in srgb, var(--phosphor) 72%, white);
+  font-family: var(--term-font);
+  font-size: 1.35rem;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
-.service-hero h1 {
-  margin: 0.6rem 0 0;
-  font-size: clamp(2.25rem, 5.5vw, 4rem);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.02;
-}
-
 .service-lede {
-  margin: 1.5rem 0 0;
+  margin: 1rem 0 0;
   max-width: 62ch;
   color: var(--ink-muted);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   line-height: 1.6;
 }
 
-.service-block {
-  position: relative;
-  overflow: hidden;
-  margin-top: 2.5rem;
-  padding: 2rem 2rem 2.25rem;
-  background: var(--glass-panel-bg-alt);
-  backdrop-filter: var(--glass-blur-xxxl);
-  -webkit-backdrop-filter: var(--glass-blur-xxxl);
-  border-radius: var(--glass-radius);
+.service-pane-title {
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
 }
 
-.service-block h2 {
-  position: relative;
-  z-index: 1;
-  margin: 0 0 1.5rem;
-  font-size: 1.3rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+.service-benefits,
+.service-deliverables,
+.service-process {
+  margin: 0;
+  list-style: none;
+  display: grid;
 }
 
 .service-benefits,
 .service-deliverables {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.75rem;
+  gap: 0.8rem;
 }
 
 .service-benefits li,
 .service-deliverables li {
   position: relative;
-  padding-left: 1.4rem;
+  padding-left: 1.6rem;
   color: var(--ink-muted);
   line-height: 1.5;
 }
-.service-benefits li::before,
-.service-deliverables li::before {
-  content: "";
+.service-benefits li::before {
+  content: ">";
   position: absolute;
   left: 0;
-  top: 0.55em;
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: var(--emerald);
+  top: -0.05em;
+  color: var(--phosphor);
+  font-family: var(--term-font);
+  font-size: 1.3rem;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--phosphor) 60%, transparent);
 }
 
+/* Deliverables: a [x] checklist */
+.service-deliverables li {
+  padding-left: 2.6rem;
+  color: var(--ink);
+}
+.service-check {
+  position: absolute;
+  left: 0;
+  top: -0.08em;
+  color: var(--phosphor);
+  font-family: var(--term-font);
+  font-size: 1.3rem;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--phosphor) 60%, transparent);
+}
+
+/* 404: the planet list doubles as a way back in */
+.not-found-page .service-deliverables a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.not-found-page .service-deliverables a:hover,
+.not-found-page .service-deliverables a:focus-visible {
+  color: var(--phosphor);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* Process: a numbered command list */
 .service-process {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 1.75rem;
+  gap: 1.4rem;
 }
 
 .service-process li {
   display: grid;
-  grid-template-columns: 2.5rem 1fr;
-  gap: 1rem;
+  grid-template-columns: 2.4rem 1fr;
+  gap: 0.9rem;
 }
 
 .service-process-index {
-  color: var(--emerald);
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding-top: 0.15rem;
+  color: color-mix(in srgb, var(--phosphor) 70%, transparent);
+  font-family: var(--term-font);
+  font-size: 1.3rem;
+  line-height: 1.2;
 }
 
 .service-process h3 {
-  margin: 0 0 0.35rem;
-  font-size: 1.05rem;
-  font-weight: 600;
+  margin: 0 0 0.3rem;
+  color: var(--phosphor);
+  font-family: var(--term-font);
+  font-size: 1.45rem;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--phosphor) 45%, transparent);
 }
-
 .service-process p {
   margin: 0;
   color: var(--ink-muted);
@@ -1165,7 +1458,7 @@ button:focus-visible {
 }
 
 .service-cta {
-  margin-top: 4rem;
+  margin-top: 3rem;
 }
 
 .service-cta-button {
@@ -1191,6 +1484,60 @@ button:focus-visible {
     0 6px 24px rgba(0, 0, 0, 0.3);
 }
 
+/* ENTER OPTION: [ START PROJECT ] as a terminal prompt, not a pill */
+.service-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+  color: var(--phosphor);
+  font-family: var(--term-font);
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--phosphor) 50%, transparent);
+}
+.service-cta-label { opacity: 0.75; }
+
+button.service-cta-button.service-cta-terminal {
+  padding: 0.15rem 0.6rem 0.05rem;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 60%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--phosphor) 10%, rgba(4, 6, 7, 0.7));
+  color: var(--phosphor);
+  font-family: var(--term-font);
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: inherit;
+  text-shadow: inherit;
+  text-transform: uppercase;
+  animation: terminal-armed 0.9s steps(2, end) infinite;
+}
+.service-cta-terminal::before { display: none; }
+button.service-cta-button.service-cta-terminal:hover,
+button.service-cta-button.service-cta-terminal:focus-visible {
+  transform: none;
+  background: var(--phosphor);
+  color: #05080a;
+  text-shadow: none;
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .service-pane-bar { font-size: 1rem; padding: 0.45rem 0.85rem 0.35rem; }
+  .service-pane-body { padding: 1.1rem 1.1rem 1.3rem; }
+  .service-pane-meta { display: none; }
+  .service-hero .service-pane-meta { display: inline; }
+  .service-process li { grid-template-columns: 1.9rem 1fr; gap: 0.6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-headline-cursor,
+  button.service-cta-button.service-cta-terminal {
+    animation: none !important;
+  }
+}
+
 /* ============================================================
    Core page — about / mission control copy
    ============================================================ */
@@ -1207,8 +1554,7 @@ button:focus-visible {
   margin-bottom: 3rem;
 }
 
-.core-eyebrow,
-.service-force {
+.core-eyebrow {
   display: inline-flex;
   width: fit-content;
   margin-bottom: 0.75rem;
@@ -1221,10 +1567,6 @@ button:focus-visible {
   letter-spacing: 0.09em;
   text-transform: uppercase;
   box-shadow: 0 0 18px rgba(205, 247, 87, 0.24);
-}
-
-.service-force {
-  margin-bottom: 1rem;
 }
 
 .core-hero h1,
@@ -1347,6 +1689,113 @@ button:focus-visible {
 
 .legal-links a {
   white-space: nowrap;
+}
+
+.legal-links-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--emerald);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.legal-block .legal-links-button {
+  position: relative;
+  z-index: 1;
+  font-size: 0.95rem;
+}
+
+.legal-links-button:hover,
+.legal-links-button:focus-visible {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Cookie consent — a small terminal readout, bottom right, clear of
+   the hero copy and journey terminals on the left.
+   ============================================================ */
+.consent-banner {
+  position: fixed;
+  /* Sits just inside the journey rail (timeline offset + 28px rail + gap),
+     so short viewports don't stack it over the last stops. */
+  right: calc(clamp(1.25rem, 2.5vw, 2.75rem) + 28px + 1rem);
+  bottom: 1.25rem;
+  z-index: 30;
+  width: min(23rem, calc(100vw - 2rem));
+  padding: 0.85rem 1rem 0.9rem;
+  border: 1px solid rgba(205, 247, 87, 0.5);
+  background:
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px),
+    rgba(3, 6, 6, 0.92);
+  box-shadow: 0 0 40px rgba(205, 247, 87, 0.12), 0 18px 50px rgba(0, 0, 0, 0.5);
+  animation: terminal-flicker 0.32s steps(2, end) 1;
+}
+
+.consent-title {
+  margin: 0 0 0.4rem;
+  color: #cdf757;
+  font-family: var(--font-terminal), ui-monospace, Consolas, monospace;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(205, 247, 87, 0.45);
+}
+
+.consent-copy {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.consent-copy a {
+  color: var(--emerald);
+}
+
+.consent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.consent-button {
+  padding: 0.18rem 0.6rem 0.08rem;
+  border: 1px solid rgba(205, 247, 87, 0.55);
+  background: none;
+  color: #cdf757;
+  font-family: var(--font-terminal), ui-monospace, Consolas, monospace;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.consent-button:hover,
+.consent-button:focus-visible,
+.consent-accept {
+  background: #cdf757;
+  color: #05080a;
+  outline: none;
+}
+
+.consent-accept:hover,
+.consent-accept:focus-visible {
+  background: color-mix(in srgb, #cdf757 80%, white);
+}
+
+@media (max-width: 768px) {
+  .consent-banner {
+    right: 1rem;
+    bottom: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consent-banner {
+    animation: none;
+  }
 }
 
 .core-force-list,
@@ -2067,3 +2516,256 @@ html.free-mode .scene-root canvas:active {
   cursor: grabbing;
 }
 
+/* ============================================================
+   System map — planet name tags (overview + EVA)
+   Positioned from the 3D scene every frame. Below the page
+   layer in the journey, clickable "fly to" targets in EVA.
+   ============================================================ */
+.map-tags {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+html.scene-hidden .map-tags { display: none; }
+
+.map-tag {
+  --tag: #cdf757;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: stretch;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--tag) 60%, transparent);
+  background: rgba(3, 5, 7, 0.72);
+  color: var(--tag);
+  font-family: var(--font-terminal), ui-monospace, Consolas, monospace;
+  font-size: 1.02rem;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--tag) 55%, transparent);
+  white-space: nowrap;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tag) 22%, transparent);
+  pointer-events: none;
+  will-change: transform;
+}
+.map-tag::after {
+  /* Stem pointing down at the planet */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 6px;
+  background: color-mix(in srgb, var(--tag) 70%, transparent);
+}
+.map-tag-num {
+  padding: 0.18rem 0.3rem 0.1rem;
+  background: var(--tag);
+  color: #05080a;
+  text-shadow: none;
+}
+.map-tag-name { padding: 0.18rem 0.42rem 0.1rem; }
+
+.map-tags.is-live .map-tag {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.map-tags.is-live .map-tag:hover,
+.map-tags.is-live .map-tag:focus-visible,
+.map-tag.is-hover {
+  background: var(--tag);
+  color: #05080a;
+  text-shadow: none;
+  outline: none;
+}
+.map-tags.is-live .map-tag:hover .map-tag-num,
+.map-tag.is-hover .map-tag-num {
+  background: #05080a;
+  color: var(--tag);
+}
+
+/* Pointing at a planet or the core */
+html.planet-hover,
+html.planet-hover * {
+  cursor: pointer !important;
+}
+
+@media (max-width: 768px) {
+  .map-tag { font-size: 0.88rem; }
+}
+
+/* ============================================================
+   EVA console — status bar, controls guide, fly-to list and
+   the docked terminal (reuses the journey terminal styles).
+   ============================================================ */
+.eva-status,
+.eva-guide,
+.eva-fly {
+  position: fixed;
+  z-index: 6;
+  font-family: var(--font-terminal), ui-monospace, Consolas, monospace;
+  text-transform: uppercase;
+  color: #cdf757;
+  text-shadow: 0 0 6px rgba(205, 247, 87, 0.45);
+}
+
+.eva-status {
+  top: 5.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.3rem 0.4rem 0.25rem 0.8rem;
+  border: 1px solid rgba(205, 247, 87, 0.45);
+  background: rgba(3, 5, 7, 0.78);
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.eva-status-live {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #cdf757;
+  box-shadow: 0 0 8px #cdf757;
+  animation: terminal-blink 1.6s steps(1, end) infinite;
+}
+
+.eva-key {
+  padding: 0.12rem 0.45rem 0.05rem;
+  border: 1px solid currentColor;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-shadow: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.eva-key:hover,
+.eva-key:focus-visible {
+  background: #cdf757;
+  color: #05080a;
+  text-shadow: none;
+  outline: none;
+}
+
+.eva-guide {
+  left: 50%;
+  bottom: 5.5rem;
+  transform: translateX(-50%);
+  width: min(24rem, calc(100vw - 2rem));
+  padding: 0.9rem 1.1rem 1rem;
+  border: 1px solid rgba(205, 247, 87, 0.5);
+  background:
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px),
+    rgba(3, 6, 6, 0.9);
+  box-shadow: 0 0 40px rgba(205, 247, 87, 0.12), 0 18px 50px rgba(0, 0, 0, 0.5);
+  font-size: 1.2rem;
+  animation: terminal-flicker 0.32s steps(2, end) 1;
+}
+.eva-guide-title { margin: 0 0 0.55rem; }
+.eva-guide ul {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: color-mix(in srgb, #cdf757 70%, white);
+}
+.eva-guide li span {
+  display: inline-block;
+  min-width: 9.5rem;
+  color: #cdf757;
+}
+.eva-guide li span::before { content: "["; opacity: 0.6; }
+.eva-guide li span::after { content: "]"; opacity: 0.6; }
+.eva-guide-ok { margin-top: 0.8rem; }
+
+.eva-fly {
+  right: var(--pad);
+  bottom: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  font-size: 1.15rem;
+}
+.eva-fly-toggle { background: rgba(3, 5, 7, 0.78); }
+.eva-fly-list {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0.45rem;
+  border: 1px solid rgba(205, 247, 87, 0.4);
+  background: rgba(3, 5, 7, 0.86);
+  list-style: none;
+}
+.eva-fly-item {
+  --tag: #cdf757;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.12rem 0.5rem 0.05rem 0.2rem;
+  border: 0;
+  background: none;
+  color: var(--tag);
+  font: inherit;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: inherit;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--tag) 50%, transparent);
+  cursor: pointer;
+}
+.eva-fly-num {
+  padding: 0.05rem 0.25rem 0;
+  background: var(--tag);
+  color: #05080a;
+  text-shadow: none;
+}
+.eva-fly-item:hover,
+.eva-fly-item:focus-visible,
+.eva-fly-item.is-current {
+  background: var(--tag);
+  color: #05080a;
+  text-shadow: none;
+  outline: none;
+}
+.eva-fly-item:hover .eva-fly-num,
+.eva-fly-item:focus-visible .eva-fly-num,
+.eva-fly-item.is-current .eva-fly-num {
+  background: #05080a;
+  color: var(--tag);
+}
+
+.eva-terminal { z-index: 5; }
+.eva-terminal .terminal-bezel { pointer-events: auto; }
+.eva-terminal .terminal-screen { min-height: 0; }
+
+@media (max-width: 768px) {
+  .eva-status {
+    top: 4rem;
+    font-size: 0.98rem;
+  }
+  .eva-guide { bottom: 4.6rem; font-size: 1.05rem; }
+  .eva-guide li span { min-width: 8.6rem; }
+  .eva-fly { bottom: 1rem; font-size: 1.02rem; }
+  .eva-fly-list { max-height: 55vh; overflow-y: auto; }
+  /* The docked terminal takes the bottom of the screen */
+  .eva-ui.has-focus .eva-fly { display: none; }
+  .eva-terminal { padding-right: 0.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eva-status-live,
+  .eva-guide {
+    animation: none !important;
+  }
+}

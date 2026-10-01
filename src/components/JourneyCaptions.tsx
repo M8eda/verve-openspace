@@ -1,59 +1,37 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { TERMINAL_STOPS, type TerminalLine, type TerminalLineKind } from "@/data/terminals";
+import { useRouter } from "next/navigation";
+import { TERMINAL_STOPS, type TerminalLine } from "@/data/terminals";
 import { pagerPosition, pagerState } from "@/lib/journeyPager";
 import { subscribeFrame } from "@/lib/frameLoop";
-import { prefersReducedMotion } from "@/lib/device";
-import { trackEvent } from "@/lib/analytics";
+import { isCoarsePointer, prefersReducedMotion } from "@/lib/device";
+import { isFreeMode } from "@/lib/freeMode";
+import { isContactOpen } from "@/lib/contactPanel";
+import { planetHover } from "@/lib/planetFocus";
+import { runTerminalAction } from "@/lib/terminalActions";
+import {
+  TerminalTyper,
+  isPlainClick,
+  renderOptions,
+  restartAnimation,
+  type RenderedOptions,
+} from "@/lib/terminalTyper";
 
 const CORE_PARAM = TERMINAL_STOPS[TERMINAL_STOPS.length - 1].param;
 
 /** Distance (in pages) over which a stop's screen content fades out. */
 const CONTENT_WINDOW = 0.42;
-/** Blinking cursor on an empty screen before the first visit starts typing. */
-const BOOT_MS = 520;
-/** Per-character cost. Commands type at "human" speed, output prints fast. */
-const CHAR_MS: Record<TerminalLineKind, number> = {
-  cmd: 34,
-  meta: 9,
-  hi: 12,
-  out: 10,
-  prompt: 10,
-};
-/** Pause after finishing a line, before the next one starts. */
-const LINE_PAUSE_MS: Record<TerminalLineKind, number> = {
-  cmd: 260,
-  meta: 140,
-  hi: 140,
-  out: 140,
-  prompt: 0,
-};
-
-const PREFIX: Record<TerminalLineKind, string> = {
-  cmd: "> ",
-  meta: "",
-  hi: "",
-  out: "",
-  prompt: "",
-};
-
-type Phase = "boot" | "typing" | "done";
-
-type LineEl = { typed: HTMLSpanElement; rest: HTMLSpanElement; text: string; kind: TerminalLineKind };
+/** How long a finished screen sits untouched before the scroll nudge blinks in. */
+const IDLE_HINT_MS = 4000;
 
 function smoothstep(x: number) {
   const t = Math.max(0, Math.min(1, x));
   return t * t * (3 - 2 * t);
 }
 
-function restartAnimation(el: HTMLElement, cls: string) {
-  el.classList.remove(cls);
-  void el.offsetWidth;
-  el.classList.add(cls);
-}
-
 export default function JourneyCaptions() {
+  const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const bezelRef = useRef<HTMLDivElement>(null);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -62,14 +40,20 @@ export default function JourneyCaptions() {
   const plateRef = useRef<HTMLSpanElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLSpanElement>(null);
-  const optionRef = useRef<HTMLAnchorElement>(null);
-  const optionLabelRef = useRef<HTMLSpanElement>(null);
+  const optionsRef = useRef<HTMLDivElement>(null);
+  const hintRef = useRef<HTMLDivElement>(null);
   const srRef = useRef<HTMLParagraphElement>(null);
   const skipRef = useRef<() => void>(() => {});
 
   useEffect(() => {
+    const body = bodyRef.current;
+    const cursor = cursorRef.current;
+    const optionsEl = optionsRef.current;
+    if (!body || !cursor || !optionsEl) return;
+
     const reduceMotion = prefersReducedMotion();
     const compactQuery = window.matchMedia("(max-width: 768px)");
+    const touch = isCoarsePointer();
     /** Stops whose text has fully typed once; revisits print instantly. */
     const seen = new Set<number>();
 
@@ -80,62 +64,56 @@ export default function JourneyCaptions() {
     let interactive: boolean | null = null;
 
     let stopIdx = -1;
-    let lines: LineEl[] = [];
-    let phase: Phase = "done";
-    let bootLeft = 0;
-    let li = 0;
-    let ci = 0;
-    let budget = 0;
+    let rendered: RenderedOptions = { items: [], cursorHost: null, slot: null };
     let announced = -1;
+    let idleMs = 0;
+    let hintShown = false;
+    let armed = false;
 
-    const setPhase = (next: Phase) => {
-      phase = next;
-      rootRef.current?.setAttribute("data-phase", next);
-    };
+    const navigate = (href: string) => router.push(href);
 
-    const placeCursor = () => {
-      const cursor = cursorRef.current;
-      if (!cursor) return;
-      if (phase === "done") {
-        const opt = optionRef.current;
-        if (opt && opt.style.display !== "none") {
-          opt.appendChild(cursor);
-        } else {
-          const last = lines[lines.length - 1];
-          if (last) last.typed.after(cursor);
+    const typer = new TerminalTyper(
+      body,
+      cursor,
+      (phase) => {
+        rootRef.current?.setAttribute("data-phase", phase);
+        if (phase === "done") {
+          seen.add(stopIdx);
+          optionsEl.style.visibility = "visible";
         }
-        return;
-      }
-      const line = lines[Math.min(li, lines.length - 1)];
-      if (line) line.typed.after(cursor);
+      },
+      () => rendered.cursorHost,
+    );
+    skipRef.current = () => typer.skip();
+
+    const choose = (index: number, event?: MouseEvent) => {
+      const stop = TERMINAL_STOPS[stopIdx];
+      const option = stop?.options[index];
+      if (!option) return;
+      // Ctrl/middle clicks on a link keep the browser's own behaviour.
+      if (event && option.action.type === "link" && !isPlainClick(event)) return;
+      event?.preventDefault();
+      if (rendered.slot) rendered.slot.textContent = String(index + 1);
+      runTerminalAction(option.action, navigate, `journey_terminal_${stop.param}`);
     };
 
-    const renderLine = (line: LineEl, count: number) => {
-      line.typed.textContent = line.text.slice(0, count);
-      line.rest.textContent = line.text.slice(count);
-    };
-
-    const finish = () => {
-      for (const line of lines) renderLine(line, line.text.length);
-      li = lines.length;
-      setPhase("done");
-      seen.add(stopIdx);
-      if (optionRef.current) optionRef.current.style.visibility = "visible";
-      placeCursor();
-    };
-    skipRef.current = () => {
-      if (phase !== "done") finish();
+    const setHint = (show: boolean) => {
+      if (show === hintShown) return;
+      hintShown = show;
+      hintRef.current?.classList.toggle("is-visible", show);
     };
 
     const build = (idx: number) => {
       const stop = TERMINAL_STOPS[idx];
-      const body = bodyRef.current;
-      if (!body) return;
 
       // Leaving a stop after it started typing counts as a visit, so coming
       // back prints it instantly instead of making them sit through it again.
-      if (stopIdx >= 0 && phase !== "boot") seen.add(stopIdx);
+      if (stopIdx >= 0 && typer.phase !== "boot") seen.add(stopIdx);
       stopIdx = idx;
+      idleMs = 0;
+      setHint(false);
+      armed = false;
+
       const compact = compactQuery.matches;
       const visibleLines: TerminalLine[] = compact
         ? stop.lines.filter((l) => l.kind !== "meta")
@@ -147,43 +125,28 @@ export default function JourneyCaptions() {
       bezelRef.current?.style.setProperty("--phosphor", stop.color);
       if (tagRef.current && !reduceMotion) restartAnimation(tagRef.current, "is-flicker");
 
-      body.replaceChildren();
-      lines = visibleLines.map((l) => {
-        const row = document.createElement("div");
-        row.className = `terminal-line terminal-line-${l.kind}`;
-        const typed = document.createElement("span");
-        const rest = document.createElement("span");
-        rest.className = "terminal-rest";
-        row.append(typed, rest);
-        body.appendChild(row);
-        const line = { typed, rest, text: PREFIX[l.kind] + l.text, kind: l.kind };
-        renderLine(line, 0);
-        return line;
-      });
+      rendered = renderOptions(optionsEl, stop.options, choose);
+      optionsEl.style.visibility = "hidden";
+      // Re-apply the current interactivity to the fresh option elements.
+      for (const el of rendered.items) el.tabIndex = interactive ? 0 : -1;
 
-      const opt = optionRef.current;
-      if (opt) {
-        if (stop.link) {
-          opt.href = stop.link.href;
-          opt.style.display = "";
-          if (optionLabelRef.current) optionLabelRef.current.textContent = stop.link.label;
-        } else {
-          opt.removeAttribute("href");
-          opt.style.display = "none";
-        }
-        opt.style.visibility = "hidden";
+      const hint = hintRef.current;
+      if (hint) {
+        hint.dataset.kind = stop.hint ?? "none";
+        hint.textContent =
+          stop.hint === "primary"
+            ? touch
+              ? "> SWIPE UP TO CONTINUE ▲"
+              : "> SCROLL TO CONTINUE ▼"
+            : touch
+              ? "Swipe up for the next stop"
+              : "Scroll for the next stop ▼";
       }
 
-      li = 0;
-      ci = 0;
-      budget = 0;
-      if (reduceMotion || seen.has(idx)) {
-        finish();
-        if (!reduceMotion && screenRef.current) restartAnimation(screenRef.current, "is-flicker");
-      } else {
-        bootLeft = BOOT_MS;
-        setPhase("boot");
-        placeCursor();
+      const instant = reduceMotion || seen.has(idx);
+      typer.load(visibleLines, instant);
+      if (instant && !reduceMotion && screenRef.current) {
+        restartAnimation(screenRef.current, "is-flicker");
       }
     };
 
@@ -198,43 +161,32 @@ export default function JourneyCaptions() {
       srRef.current.textContent = `${stop.tag}. ${text}`;
     };
 
-    const advance = (delta: number) => {
-      if (phase === "boot") {
-        bootLeft -= delta;
-        if (bootLeft > 0) return;
-        budget = -bootLeft;
-        setPhase("typing");
-      }
-      if (phase !== "typing") return;
-
-      budget += delta;
-      const startLine = li;
-      while (li < lines.length) {
-        const line = lines[li];
-        const cost = CHAR_MS[line.kind];
-        if (ci < line.text.length) {
-          if (budget < cost) break;
-          budget -= cost;
-          ci++;
-          continue;
-        }
-        const pause = LINE_PAUSE_MS[line.kind];
-        if (budget < pause) break;
-        budget -= pause;
-        renderLine(line, ci);
-        li++;
-        ci = 0;
-      }
-
-      if (li >= lines.length) {
-        finish();
-        return;
-      }
-      renderLine(lines[li], ci);
-      if (li !== startLine) placeCursor();
+    // Any deliberate input resets the idle timer for the scroll nudge.
+    const resetIdle = () => {
+      idleMs = 0;
+      setHint(TERMINAL_STOPS[stopIdx]?.hint === "subtle" && typer.phase === "done");
     };
 
-    return subscribeFrame((_time, delta) => {
+    const onKey = (e: KeyboardEvent) => {
+      resetIdle();
+      if (hidden || !interactive || isFreeMode() || isContactOpen()) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+      const stop = TERMINAL_STOPS[stopIdx];
+      if (!stop || stop.options.length < 2) return;
+      const n = Number(e.key);
+      if (!Number.isInteger(n) || n < 1 || n > stop.options.length) return;
+      e.preventDefault();
+      typer.skip();
+      choose(n - 1);
+    };
+
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("wheel", resetIdle, { passive: true });
+    window.addEventListener("touchstart", resetIdle, { passive: true });
+
+    const unsubscribe = subscribeFrame((_time, delta) => {
       const root = rootRef.current;
       if (!root) return;
 
@@ -292,20 +244,46 @@ export default function JourneyCaptions() {
       if (nextInteractive !== interactive) {
         interactive = nextInteractive;
         if (screenRef.current) screenRef.current.style.pointerEvents = nextInteractive ? "auto" : "none";
-        if (optionRef.current) optionRef.current.tabIndex = nextInteractive ? 0 : -1;
+        for (const el of rendered.items) el.tabIndex = nextInteractive ? 0 : -1;
+      }
+
+      // Pointing at this stop's planet in the scene lights up its option,
+      // so it's clear that clicking the planet does the same thing.
+      const stop = TERMINAL_STOPS[best];
+      const nextArmed =
+        !!stop.bodyId && planetHover.id === stop.bodyId && typer.phase === "done" && content > 0.6;
+      if (nextArmed !== armed) {
+        armed = nextArmed;
+        rendered.items[0]?.classList.toggle("is-armed", nextArmed);
       }
 
       // Typing only runs once the camera has settled on this stop; leaving
       // mid-sentence freezes it, and moving to another stop rebuilds.
       const settled = !pagerState.locked && bestDist < 0.01;
-      if (settled) {
-        announce(best);
-        // Real elapsed time, so slow frames don't slow the typing; capped so
-        // a backgrounded tab doesn't dump a whole screen in one frame.
-        advance(Math.min(delta, 250));
+      if (!settled) {
+        idleMs = 0;
+        setHint(false);
+        return;
+      }
+
+      announce(best);
+      // Real elapsed time, so slow frames don't slow the typing; capped so
+      // a backgrounded tab doesn't dump a whole screen in one frame.
+      typer.advance(Math.min(delta, 250));
+
+      if (typer.phase === "done" && stop.hint) {
+        idleMs += Math.min(delta, 250);
+        setHint(stop.hint === "subtle" || idleMs >= IDLE_HINT_MS);
       }
     });
-  }, []);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("wheel", resetIdle);
+      window.removeEventListener("touchstart", resetIdle);
+    };
+  }, [router]);
 
   return (
     <div ref={rootRef} className="journey-terminal" data-hidden="true" data-phase="done" style={{ display: "none", opacity: 0 }}>
@@ -316,24 +294,8 @@ export default function JourneyCaptions() {
             <span ref={sysRef} className="terminal-sysid" />
           </div>
           <div ref={bodyRef} className="terminal-body" aria-hidden="true" />
-          <a
-            ref={optionRef}
-            className="terminal-option"
-            tabIndex={-1}
-            onClick={(e) => {
-              e.stopPropagation();
-              const link = optionRef.current;
-              if (!link?.href) return;
-              trackEvent("journey_caption_click", {
-                target: link.pathname,
-                label: optionLabelRef.current?.textContent ?? "",
-              });
-            }}
-          >
-            <span aria-hidden="true">ENTER OPTION: [ </span>
-            <span ref={optionLabelRef} className="terminal-option-label" />
-            <span aria-hidden="true"> ]</span>
-          </a>
+          <div ref={optionsRef} className="terminal-options" />
+          <div ref={hintRef} className="terminal-hint" aria-hidden="true" />
           <span ref={cursorRef} className="terminal-cursor" aria-hidden="true" />
           <p ref={srRef} className="sr-only" aria-live="polite" />
         </div>

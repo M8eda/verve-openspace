@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import CookieSettingsButton from "@/components/CookieSettingsButton";
 import {
   contactEmail,
   contactPhoneDisplay,
@@ -91,10 +92,16 @@ export default function PrivacyPage() {
         <h2>Analytics and cookies</h2>
         <p>
           We use Google Analytics to understand how visitors use the website. Google
-          Analytics may use cookies and similar technologies to collect usage data.
-          You can control cookies through your browser settings and may use Google&rsquo;s
-          available opt-out tools where applicable.
+          Analytics cookies are only stored if you allow them in the cookie banner;
+          until then, analytics runs without cookies. You can change your choice at any
+          time from &ldquo;Cookie settings&rdquo; here or in the footer of our service pages,
+          and you can also control cookies through your browser settings.
         </p>
+        {process.env.NODE_ENV === "production" ? (
+          <p>
+            <CookieSettingsButton />
+          </p>
+        ) : null}
       </section>
 
       <section className="legal-block">

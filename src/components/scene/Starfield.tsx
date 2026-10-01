@@ -53,7 +53,7 @@ function buildGeometry({
     position[i * 3 + 2] = r * s * Math.sin(theta);
 
     const isFlare = rand() < flareChance;
-    const bigness = Math.pow(rand(), 2.2);
+    rand(); // retired draw, kept so the seeded star layout doesn't shift
 
     size[i] = isFlare
       ? 2.8 + rand() * 2.4

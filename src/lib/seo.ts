@@ -4,8 +4,18 @@ export const siteUrl = "https://verve-marketing.space";
 export const siteName = "Verve";
 export const contactEmail = "info@verve-marketing.space";
 export const contactPhoneDisplay = "+20 11 16741301";
-export const contactPhoneHref = "tel:+201116741301";
-export const copyrightNotice = "© 2026 Verve. All rights reserved.";
+/** E.164 form, for structured data. */
+export const contactPhoneE164 = "+201116741301";
+export const contactPhoneHref = `tel:${contactPhoneE164}`;
+/**
+ * The company's own public profiles (LinkedIn, Instagram, X…). Search engines
+ * use these to tie the profiles to the site; leave empty rather than listing
+ * pages that aren't official company profiles.
+ */
+export const socialProfiles: string[] = [];
+// Stamped at build time (next.config.ts) so server HTML and the client bundle
+// always agree; each deploy picks up the current year.
+export const copyrightNotice = `© ${process.env.BUILD_YEAR} ${siteName}. All rights reserved.`;
 export const defaultTitle = "Verve — Brand, Web Design & Digital Growth Agency";
 export const defaultDescription =
   "Verve is a digital agency building brand, web design, SEO, paid media, email marketing, and growth systems that help ambitious companies own their space.";
@@ -45,19 +55,21 @@ export function organizationJsonLd() {
     "@type": "Organization",
     name: siteName,
     url: siteUrl,
-    logo: absoluteUrl("/icon.svg"),
+    // Google wants a raster logo (at least 112px); public/logo.png is the
+    // icon rendered at 512px.
+    logo: absoluteUrl("/logo.png"),
     description: defaultDescription,
     email: contactEmail,
-    telephone: contactPhoneDisplay,
+    telephone: contactPhoneE164,
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: contactPhoneDisplay,
+      telephone: contactPhoneE164,
       email: contactEmail,
-      contactType: "customer inquiries",
+      contactType: "customer service",
       areaServed: "Worldwide",
       availableLanguage: ["en"],
     },
-    sameAs: ["https://github.com/M8eda/verve-openspace"],
+    ...(socialProfiles.length > 0 ? { sameAs: socialProfiles } : {}),
     makesOffer: services.map((service) => ({
       "@type": "Offer",
       itemOffered: {

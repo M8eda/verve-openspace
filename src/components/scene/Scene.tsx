@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useMemo, useState } from "react";
+import { useThree } from "@react-three/fiber";
+import { PerformanceMonitor } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import CameraRig from "./CameraRig";
 import FreeLookControls from "./FreeLookControls";
-import PlanetLabels from "./PlanetLabels";
+import OrbitTrails from "./OrbitTrails";
+import CoreEmblem from "./CoreEmblem";
+import PlanetTags from "./PlanetTags";
+import PlanetPicker from "./PlanetPicker";
 import Galaxy from "./Galaxy";
 import Haze from "./Haze";
 import Planet from "./Planet";
@@ -16,22 +20,33 @@ import EcosystemPlanet from "./EcosystemPlanet";
 import { services } from "@/data/services";
 import { isWeakGPU, prefersReducedMotion } from "@/lib/device";
 
-export default function Scene() {
+export default function Scene({ dpr }: { dpr: [number, number] }) {
   const isWeak = useMemo(() => isWeakGPU(), []);
   const reduceMotion = useMemo(() => prefersReducedMotion(), []);
-  const enablePost = !isWeak && !reduceMotion;
+  const setDpr = useThree((s) => s.setDpr);
+  // Set once the frame rate keeps flip-flopping even at the lowest DPR.
+  const [struggling, setStruggling] = useState(false);
+  const enablePost = !isWeak && !reduceMotion && !struggling;
 
-  useFrame((state, delta) => {
-    // Start at 1.0 (max quality).
-    // If FPS drops below 45 (delta > 0.022s) for multiple frames,
-    // R3F will gradually lower the performance scaling factor towards 'min'.
-    if (delta > 0.022) {
-      state.performance.regress();
-    }
-  });
+  // Scale render resolution with the measured frame rate: start sharp, drop
+  // towards the tier's minimum DPR when frames run long, recover when they
+  // don't. Never exceed the screen's own pixel ratio.
+  const applyFactor = (factor: number) => {
+    const top = Math.max(dpr[0], Math.min(window.devicePixelRatio, dpr[1]));
+    setDpr(Math.round((dpr[0] + (top - dpr[0]) * factor) * 10) / 10);
+  };
 
   return (
     <>
+      <PerformanceMonitor
+        factor={1}
+        flipflops={3}
+        onChange={({ factor }) => applyFactor(factor)}
+        onFallback={() => {
+          applyFactor(0);
+          setStruggling(true);
+        }}
+      />
       <color attach="background" args={["#010203"]} />
       <Haze />
       <Galaxy reduceMotion={reduceMotion} />
@@ -76,7 +91,10 @@ export default function Scene() {
       <EcosystemPlanet reduceMotion={reduceMotion} />
       <CameraRig />
       <FreeLookControls />
-      <PlanetLabels />
+      <OrbitTrails reduceMotion={reduceMotion} />
+      <CoreEmblem />
+      <PlanetTags />
+      <PlanetPicker />
 
       {enablePost && (
         <EffectComposer enableNormalPass={false}>

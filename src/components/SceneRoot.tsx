@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import SceneFallback from "./SceneFallback";
 import { isMobileTier, isWeakGPU, supportsWebGL } from "@/lib/device";
 import { sceneReady } from "@/lib/scrollState";
+import { cancelPendingFreeMode } from "@/lib/freeMode";
 
 const SceneCanvas = dynamic(() => import("./SceneCanvas"), { ssr: false });
 
@@ -44,19 +45,21 @@ export default function SceneRoot() {
     }
   }, [sceneActive]);
 
-  if (!sceneActive) return null;
+  // Tell the loader when there's no canvas to wait for. Kept out of render so
+  // rendering stays free of side effects.
+  useEffect(() => {
+    if (!sceneActive || webglSupported === null) return;
+    if (!webglSupported || broken) {
+      sceneReady.ready = false;
+      sceneReady.failed = true;
+      // No scene means no EVA; don't leave a request to fire later.
+      cancelPendingFreeMode();
+    }
+  }, [sceneActive, webglSupported, broken]);
 
-  if (webglSupported === null) {
-    sceneReady.ready = false;
-    sceneReady.failed = false;
-    return null;
-  }
+  if (!sceneActive || webglSupported === null) return null;
 
-  if (!webglSupported || broken) {
-    sceneReady.ready = false;
-    sceneReady.failed = true;
-    return <SceneFallback />;
-  }
+  if (!webglSupported || broken) return <SceneFallback />;
 
   if (!tier) return null;
 

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { JOURNEY_WAYPOINTS, type JourneyWaypoint } from "@/lib/journey";
 import { pagerState, pagerPosition, PAGE_COUNT } from "@/lib/journeyPager";
 import { jumpToPage } from "@/components/JourneyPager";
-import { scrollState } from "@/lib/scrollState";
 import { playGlassHover, playGlassClick } from "@/lib/audio";
 import { trackEvent } from "@/lib/analytics";
 import { subscribeFrame } from "@/lib/frameLoop";

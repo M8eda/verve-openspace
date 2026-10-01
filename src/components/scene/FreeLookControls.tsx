@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useThree } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { isFreeMode, subscribeFreeMode } from "@/lib/freeMode";
 import { prefersReducedMotion } from "@/lib/device";
+import { evaFlight, getFlightRequest, getFocus } from "@/lib/planetFocus";
+import { getBody } from "@/lib/bodies";
+import { getBodyPosition } from "@/lib/planetPositions";
 
 /**
  * When EVA toggles on, we seed the OrbitControls target with a meaningful
@@ -26,11 +29,34 @@ import { prefersReducedMotion } from "@/lib/device";
 const MIN_PIVOT_DISTANCE = 0.5;
 const MAX_PIVOT_DISTANCE = 500;
 
+/** How far from a focused body the flight parks, in body radii (+ a margin). */
+const FRAME_RADII = 3.2;
+const FRAME_MARGIN = 1.2;
+/** Minimum camera elevation (as a direction y component) when parking. */
+const MIN_PARK_ELEVATION = 0.22;
+
+function easeInOutCubic(x: number) {
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
 export default function FreeLookControls() {
   const [active, setActive] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
   const reduceMotion = prefersReducedMotion();
+  const flight = useRef({
+    req: 0,
+    id: null as string | null,
+    flying: false,
+    start: 0,
+    duration: 0,
+    fromPos: new THREE.Vector3(),
+    fromTarget: new THREE.Vector3(),
+    offset: new THREE.Vector3(),
+    body: new THREE.Vector3(),
+    lastBody: new THREE.Vector3(),
+    dest: new THREE.Vector3(),
+  });
 
   useEffect(() => {
     setActive(isFreeMode());
@@ -67,6 +93,83 @@ export default function FreeLookControls() {
     if (!active || !controlsRef.current || !reduceMotion) return;
     controlsRef.current.update();
   }, [active, reduceMotion]);
+
+  // Flights to a focused body, then a soft lock that carries the camera
+  // along with the planet's orbit. Runs just before OrbitControls updates
+  // (drei uses priority -1), so dragging still orbits around the planet.
+  useFrame(({ clock }) => {
+    const controls = controlsRef.current;
+    const f = flight.current;
+    const focus = getFocus();
+    const req = getFlightRequest();
+
+    if (!controls || !focus) {
+      f.req = req;
+      if (f.id) {
+        f.id = null;
+        f.flying = false;
+        evaFlight.active = false;
+        if (controls) controls.enabled = true;
+      }
+      return;
+    }
+
+    if (req !== f.req || f.id !== focus) {
+      const body = getBody(focus);
+      if (!body) return;
+      f.req = req;
+      f.id = focus;
+      getBodyPosition(focus, f.body);
+      f.fromPos.copy(camera.position);
+      f.fromTarget.copy(controls.target);
+
+      // Park on the side we're already looking from, a little above it.
+      const dir = f.offset.subVectors(camera.position, f.body);
+      if (dir.lengthSq() < 1e-6) dir.set(0, 0.3, 1);
+      dir.normalize();
+      dir.y = Math.max(dir.y, MIN_PARK_ELEVATION);
+      dir.normalize().multiplyScalar(body.radius * FRAME_RADII + FRAME_MARGIN);
+
+      const travel = f.fromPos.distanceTo(f.dest.addVectors(f.body, f.offset));
+      f.duration = reduceMotion ? 0 : THREE.MathUtils.clamp(0.9 + travel / 70, 1.0, 2.4);
+      f.start = clock.elapsedTime;
+      f.flying = true;
+      evaFlight.active = true;
+      controls.enabled = false;
+    }
+
+    getBodyPosition(f.id, f.body);
+
+    if (f.flying) {
+      const u = f.duration > 0 ? Math.min(1, (clock.elapsedTime - f.start) / f.duration) : 1;
+      const e = easeInOutCubic(u);
+      // The aim settles a touch before the camera does, like a pilot
+      // locking on and then closing the distance.
+      const aim = easeInOutCubic(Math.min(1, u * 1.25));
+      camera.position.lerpVectors(f.fromPos, f.dest.addVectors(f.body, f.offset), e);
+      controls.target.lerpVectors(f.fromTarget, f.body, aim);
+      camera.lookAt(controls.target);
+      if (u >= 1) {
+        f.flying = false;
+        evaFlight.active = false;
+        controls.enabled = true;
+        f.lastBody.copy(f.body);
+      }
+      return;
+    }
+
+    // Docked: ride along with the body as it orbits.
+    const dx = f.body.x - f.lastBody.x;
+    const dy = f.body.y - f.lastBody.y;
+    const dz = f.body.z - f.lastBody.z;
+    camera.position.x += dx;
+    camera.position.y += dy;
+    camera.position.z += dz;
+    controls.target.x += dx;
+    controls.target.y += dy;
+    controls.target.z += dz;
+    f.lastBody.copy(f.body);
+  }, -2);
 
   if (!active) return null;
 
