@@ -26,7 +26,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test:smoke": "playwright test",
+    "check": "npm run typecheck && npm run lint && npm run build && npm run test:smoke"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -40,10 +43,13 @@
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.180.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.6",
     "typescript": "^5.0.0"
   },
   "engines": {

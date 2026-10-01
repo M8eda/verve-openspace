@@ -51,3 +51,7 @@ CLAUDE.md
 
 # reference material captured from other sites (never commit)
 research/
+
+# playwright
+test-results/
+playwright-report/
