@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Canvas } from "@react-three/fiber";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Canvas, addAfterEffect } from "@react-three/fiber";
 import * as THREE from "three";
 import Scene from "./scene/Scene";
 import { sceneReady } from "@/lib/scrollState";
@@ -19,6 +19,9 @@ type SceneCanvasProps = {
 
 export default function SceneCanvas({ dpr, weak, onBroken }: SceneCanvasProps) {
   const lostTimer = useRef<number | undefined>(undefined);
+  const stopFirstFrameWatch = useRef<(() => void) | undefined>(undefined);
+  // Frames are held back until Scene has compiled its shaders.
+  const [compiled, setCompiled] = useState(false);
   const contextListeners = useRef<{
     canvas: HTMLCanvasElement;
     onLost: (e: Event) => void;
@@ -29,6 +32,7 @@ export default function SceneCanvas({ dpr, weak, onBroken }: SceneCanvasProps) {
     return () => {
       sceneReady.ready = false;
       window.clearTimeout(lostTimer.current);
+      stopFirstFrameWatch.current?.();
       const listeners = contextListeners.current;
       if (!listeners) return;
 
@@ -38,9 +42,23 @@ export default function SceneCanvas({ dpr, weak, onBroken }: SceneCanvasProps) {
     };
   }, []);
 
+  const onCompiled = useCallback(() => {
+    setCompiled(true);
+    // Lift the loader only once the first frame is drawn, so the composer's
+    // own passes also compile behind it.
+    stopFirstFrameWatch.current?.();
+    const stop = addAfterEffect(() => {
+      stop();
+      stopFirstFrameWatch.current = undefined;
+      sceneReady.ready = true;
+    });
+    stopFirstFrameWatch.current = stop;
+  }, []);
+
   return (
     <Canvas
       dpr={dpr}
+      frameloop={compiled ? "always" : "never"}
       camera={{ fov: 38, near: 0.1, far: 1200, position: [0, 3, 38] }}
       gl={{
         antialias: !weak,
@@ -52,7 +70,6 @@ export default function SceneCanvas({ dpr, weak, onBroken }: SceneCanvasProps) {
         toneMappingExposure: 1.15,
       }}
       onCreated={({ gl }) => {
-        sceneReady.ready = true;
         sceneReady.failed = false;
 
         // EVA requested from another page opens now that there's a scene to fly.
@@ -84,7 +101,7 @@ export default function SceneCanvas({ dpr, weak, onBroken }: SceneCanvasProps) {
       }}
       onPointerMissed={() => undefined}
     >
-      <Scene dpr={dpr} />
+      <Scene dpr={dpr} onCompiled={onCompiled} />
     </Canvas>
   );
 }

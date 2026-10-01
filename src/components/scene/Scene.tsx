@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { useThree } from "@react-three/fiber";
+import * as THREE from "three";
 import { PerformanceMonitor } from "@react-three/drei";
 import { EffectComposer, Bloom, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
@@ -20,13 +21,58 @@ import EcosystemPlanet from "./EcosystemPlanet";
 import { services } from "@/data/services";
 import { isWeakGPU, prefersReducedMotion } from "@/lib/device";
 
-export default function Scene({ dpr }: { dpr: [number, number] }) {
+/** Longest the loader waits on shader compilation before we render anyway. */
+const WARMUP_TIMEOUT_MS = 4000;
+
+type SceneProps = {
+  dpr: [number, number];
+  /** Called once every scene shader is compiled and frames can start. */
+  onCompiled: () => void;
+};
+
+export default function Scene({ dpr, onCompiled }: SceneProps) {
   const isWeak = useMemo(() => isWeakGPU(), []);
   const reduceMotion = useMemo(() => prefersReducedMotion(), []);
   const setDpr = useThree((s) => s.setDpr);
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
   // Set once the frame rate keeps flip-flopping even at the lowest DPR.
   const [struggling, setStruggling] = useState(false);
   const enablePost = !isWeak && !reduceMotion && !struggling;
+  // On 2x+ screens every CSS pixel already spans 4+ device pixels, so 4x MSAA
+  // edges look the same as the library's 8x default at half the buffer size
+  // and resolve cost. Read once: changing it rebuilds the composer.
+  const msaaSamples = useMemo(() => (window.devicePixelRatio >= 2 ? 4 : 8), []);
+
+  // Compile every shader behind the loader rather than on the first visible
+  // frame. The canvas draws nothing until this settles, so the driver can
+  // link programs in parallel without a render forcing it to block.
+  useLayoutEffect(() => {
+    let cancelled = false;
+
+    // With the composer on, the scene renders into its buffer, which needs
+    // a different program variant (no tone mapping, linear output) than the
+    // screen does. Compile against a stand-in target so the variants match.
+    const target = enablePost ? new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }) : null;
+    const previous = gl.getRenderTarget();
+    gl.setRenderTarget(target);
+    const compiled = gl.compileAsync(scene, camera);
+    gl.setRenderTarget(previous);
+    target?.dispose();
+
+    // A lost context can leave programs that never report ready.
+    const timeout = new Promise((resolve) => window.setTimeout(resolve, WARMUP_TIMEOUT_MS));
+    Promise.race([compiled, timeout]).then(() => {
+      if (!cancelled) onCompiled();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // Mount-only: later post toggles compile on demand, as before.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Scale render resolution with the measured frame rate: start sharp, drop
   // towards the tier's minimum DPR when frames run long, recover when they
@@ -97,7 +143,7 @@ export default function Scene({ dpr }: { dpr: [number, number] }) {
       <PlanetPicker />
 
       {enablePost && (
-        <EffectComposer enableNormalPass={false}>
+        <EffectComposer enableNormalPass={false} multisampling={msaaSamples}>
           <Bloom
             intensity={0.8}
             luminanceThreshold={1.0}

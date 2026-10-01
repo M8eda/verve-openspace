@@ -315,6 +315,7 @@ export default function EvaConsole() {
       <div ref={rootRef} className="journey-terminal eva-terminal" data-hidden="true" data-phase="done">
         <div ref={bezelRef} className="terminal-bezel">
           <div ref={screenRef} className="terminal-screen" onClick={() => skipRef.current()}>
+            <span className="terminal-roll" aria-hidden="true" />
             <div className="terminal-header">
               <span ref={tagRef} className="terminal-tag" />
               <span ref={sysRef} className="terminal-sysid" />

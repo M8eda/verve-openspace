@@ -10,6 +10,21 @@ void main() {
 }
 `;
 
+/**
+ * Samples the haze Haze.tsx bakes into a cube map at startup. The noise only
+ * depends on direction, so one texture read reproduces it.
+ */
+export const hazeBakedFragment = /* glsl */ `
+uniform samplerCube uHaze;
+varying vec3 vDir;
+
+void main() {
+  gl_FragColor = vec4(textureCube(uHaze, vDir).rgb, 1.0);
+
+  #include <colorspace_fragment>
+}
+`;
+
 export type HazeQuality = "full" | "cheap" | "gradient";
 
 /**

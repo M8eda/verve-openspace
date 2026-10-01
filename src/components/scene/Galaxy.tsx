@@ -9,10 +9,14 @@ import { galaxyDiscVertex, galaxyDiscFragment } from "@/shaders/galaxyDisc";
 import { pagerPosition } from "@/lib/journeyPager";
 import { isWeakGPU } from "@/lib/device";
 
+/** Expansion at which galaxyDisc's fade reaches zero (smoothstep(0.35, 0.85)). */
+const DISC_GONE = 0.85;
+
 export default function Galaxy({ reduceMotion = false }: { reduceMotion?: boolean }) {
   const isWeak = useMemo(() => isWeakGPU(), []);
   const starCount = isWeak ? 2400 : 3200;
   const groupRef = useRef<THREE.Group>(null);
+  const discRef = useRef<THREE.Mesh>(null);
 
   const { starGeo, starMat, discMat } = useMemo(() => {
     const data = buildGalaxyGeometry(starCount);
@@ -72,6 +76,8 @@ export default function Galaxy({ reduceMotion = false }: { reduceMotion?: boolea
       groupRef.current.rotation.y = reduceMotion ? 0 : t * 0.025;
       groupRef.current.visible = expansion < 1;
     }
+    // Fully faded already; skip shading a huge transparent disc for nothing.
+    if (discRef.current) discRef.current.visible = expansion < DISC_GONE;
   });
 
   useEffect(
@@ -86,7 +92,7 @@ export default function Galaxy({ reduceMotion = false }: { reduceMotion?: boolea
   return (
     <group ref={groupRef}>
       {/* Galaxy nebula disc — CircleGeometry is XY, rotate to XZ */}
-      <mesh material={discMat} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-5}>
+      <mesh ref={discRef} material={discMat} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-5}>
         <circleGeometry args={[82, 128]} />
       </mesh>
 

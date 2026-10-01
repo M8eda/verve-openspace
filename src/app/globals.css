@@ -782,16 +782,30 @@ button:focus-visible {
   cursor: default;
 }
 
-/* Scanlines + slow rolling refresh band */
+/* Scanlines */
 .terminal-screen::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background:
-    linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--phosphor) 6%, transparent) 50%, transparent 100%) 0 -120% / 100% 40% no-repeat,
-    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px);
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px);
+}
+
+/* Slow rolling refresh band, drawn over the scanlines. Moved with transform
+   so the compositor animates it instead of repainting the screen each frame.
+   -180%..330% of its own 40% height is the 0 -120%..220% background-position
+   travel it replaces; it rests above the screen, out of sight. */
+.terminal-roll {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 40%;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--phosphor) 6%, transparent) 50%, transparent 100%);
+  transform: translateY(-180%);
   animation: terminal-roll 7s linear infinite;
 }
 
@@ -1034,8 +1048,8 @@ button:focus-visible {
 }
 
 @keyframes terminal-roll {
-  0% { background-position: 0 -120%, 0 0; }
-  100% { background-position: 0 220%, 0 0; }
+  0% { transform: translateY(-180%); }
+  100% { transform: translateY(330%); }
 }
 
 @keyframes terminal-flicker {
@@ -1078,7 +1092,7 @@ button:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .terminal-screen::before,
+  .terminal-roll,
   .terminal-cursor,
   .terminal-led,
   .terminal-option.is-armed,
