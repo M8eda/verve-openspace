@@ -19,8 +19,6 @@
   </p>
 </div>
 
-![Verve homepage hero with a scroll-driven 3D galaxy system](./docs/screenshot-home.png)
-
 > Own your space.
 
 ## Overview
