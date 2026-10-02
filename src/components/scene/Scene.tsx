@@ -17,6 +17,7 @@ import Galaxy from "./Galaxy";
 import Haze from "./Haze";
 import Planet from "./Planet";
 import Starfield from "./Starfield";
+import StarClusters from "./StarClusters";
 import VerveCore from "./VerveCore";
 import EcosystemPlanet from "./EcosystemPlanet";
 import { services } from "@/data/services";
@@ -135,6 +136,12 @@ export default function Scene({ dpr, onCompiled }: SceneProps) {
         attenuate
         flareChance={reduceMotion ? 0.02 : 0.08}
         sizeRange={[1.5, 4.2]}
+        reduceMotion={reduceMotion}
+      />
+      <StarClusters
+        count={isWeak || reduceMotion ? 120 : 380}
+        heroCount={isWeak || reduceMotion ? 3 : 8}
+        seed={88}
         reduceMotion={reduceMotion}
       />
 
