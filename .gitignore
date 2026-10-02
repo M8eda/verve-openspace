@@ -45,7 +45,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
-# local Claude Code workspace and instructions
+# local assistant workspace and instructions
 .claude/
 CLAUDE.md
 

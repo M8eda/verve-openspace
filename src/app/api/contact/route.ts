@@ -18,10 +18,8 @@ import { siteName } from "@/lib/seo";
  * Reply-To set to the visitor, then a short "transmission received" note
  * back to them (CONTACT_CONFIRM=off turns that off).
  *
- * Spam guards, none of which a real visitor sees: a hidden field only bots
- * fill in, a minimum time on the form, and a few transmissions per IP an
- * hour. Tripping the first two gets a fake success, so there's nothing to
- * tune against.
+ * Includes server-side validation and invisible anti-abuse checks so the
+ * public form stays low-friction for real visitors.
  */
 
 /** Requests larger than this aren't a contact form. */
@@ -212,7 +210,7 @@ export async function POST(request: Request) {
     return failure({ status: 400, error: "invalid" });
   }
 
-  // Bots: a filled trap field, or a form "filled in" faster than a person could
+  // Quietly ignore submissions that trip invisible anti-abuse checks.
   const elapsed = typeof body.elapsed === "number" ? body.elapsed : 0;
   if (line(body.callsign, 200) || elapsed < MIN_FILL_MS) {
     return json({ ok: true, confirmation: false });

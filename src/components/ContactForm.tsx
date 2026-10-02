@@ -556,7 +556,7 @@ export default function ContactForm() {
                     aria-invalid={error?.field === "phone"}
                   />
                 </label>
-                {/* Bot trap: hidden from people and screen readers, bots fill it in */}
+                {/* Invisible anti-abuse field; real visitors never see it */}
                 <div className="contact-trap" aria-hidden="true">
                   <label>
                     Leave this empty

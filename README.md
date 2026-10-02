@@ -16,7 +16,6 @@
     <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111" alt="React 19" />
     <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=fff" alt="TypeScript strict" />
     <img src="https://img.shields.io/badge/Three.js-WebGL-000?logo=threedotjs" alt="Three.js WebGL" />
-    <img src="https://github.com/M8eda/verve-openspace/actions/workflows/ci.yml/badge.svg" alt="CI status" />
   </p>
 </div>
 
@@ -28,7 +27,7 @@
 
 Verve is a production Next.js agency website that turns a service menu into an interactive space system. The homepage is a scroll-driven 3D journey: every service is represented as an orbiting planet, the visitor advances through terminal-style mission screens, and the final stop docks at the Verve Core.
 
-The experience also includes normal crawlable service pages, legal routes, metadata, analytics consent, direct social/contact links, and a server-side contact endpoint that sends project briefs through Hostinger SMTP.
+The experience also includes normal crawlable service pages, legal routes, metadata, analytics consent, direct social/contact links, and a server-side contact endpoint that sends project briefs through SMTP.
 
 ## Current experience
 
@@ -100,7 +99,7 @@ The contact form is a terminal-styled modal available from the header, journey t
 - Service-specific questions when services are selected
 - Budget chips
 - Message
-- Hidden bot-trap field
+- Invisible anti-abuse field
 
 Service-specific questions live in `src/data/missionBriefs.ts`. The brief text is composed by `src/lib/missionBrief.ts`, which is shared between the client fallbacks and the server endpoint so all channels use the same mission format.
 
@@ -122,22 +121,21 @@ The endpoint includes:
 - optional phone validation
 - maximum lengths for every submitted field
 - option whitelisting for service questions and budget
-- hidden trap field for bots
-- minimum time-on-form check
-- per-process rate limiting: 5 messages per IP per hour, or 30/hour in the shared unknown-IP bucket
+- lightweight invisible anti-abuse checks
+- basic request throttling
 
 If SMTP is not configured, the API returns unavailable and the client falls back to the visitor's mail app with a prefilled brief. If sending fails, the draft is kept and the form shows direct email/phone/WhatsApp fallback actions.
 
 ## Environment variables
 
-Create local environment variables from `.env.example` when testing SMTP locally. On Hostinger, set these in the deployment environment settings.
+Create local environment variables from `.env.example` when testing SMTP locally. In production, set the same variables in the hosting provider's environment settings.
 
 ```env
-SMTP_HOST=smtp.hostinger.com
+SMTP_HOST=smtp.your-provider.com
 SMTP_PORT=465
-SMTP_USER=info@verve-marketing.space
-SMTP_PASS=<mailbox password>
-CONTACT_TO=info@verve-marketing.space
+SMTP_USER=sender@your-domain.com
+SMTP_PASS=<smtp password>
+CONTACT_TO=inbox@your-domain.com
 CONTACT_CONFIRM=on
 ```
 
@@ -146,7 +144,7 @@ Notes:
 - `SMTP_PASS` must never be committed.
 - `CONTACT_TO` defaults to `SMTP_USER` when omitted.
 - Set `CONTACT_CONFIRM=off` to disable the visitor confirmation email.
-- SPF, DKIM, and DMARC should be healthy in Hostinger's email deliverability settings so messages do not land in spam.
+- SPF, DKIM, and DMARC should be healthy with the mail provider so messages do not land in spam.
 
 ## SEO, analytics, and legal
 
@@ -268,13 +266,13 @@ docs/                   README screenshot and documentation assets
 
 The live site is deployed at `https://verve-marketing.space/`.
 
-For Hostinger Node deployments:
+For Node-compatible deployments:
 
 - Build command: `npm run build`
 - Package manager: `npm`
 - Output directory: `.next`
-- Environment variables: use the SMTP values listed above
-- After changing environment variables, use **Save and redeploy** so the server route receives them
+- Environment variables: set the SMTP values listed above
+- After changing environment variables, redeploy so the server route receives them
 
 ## Status
 
