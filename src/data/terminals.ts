@@ -51,8 +51,8 @@ export type TerminalStop = {
   color: string;
   lines: TerminalLine[];
   /**
-   * One option renders as a single "ENTER OPTION: [ LABEL ]" link; more than
-   * one renders as a numbered menu that also answers to the number keys.
+   * Rendered as glass buttons. One option is a single full-width button;
+   * more than one is a menu that also answers to the number keys.
    */
   options: TerminalOption[];
   /**

@@ -146,12 +146,22 @@ export default async function ServicePage({ params }: { params: Params }) {
       </section>
 
       <footer className="service-cta">
-        <div className="service-cta-row">
-          <span className="service-cta-label" aria-hidden="true">
-            Enter option:
+        <div className="service-launch">
+          <span className="service-launch-meta" aria-hidden="true">
+            {`${pad(service.index)} // ${service.shortName}`} · Ready for launch
           </span>
-          <MissionControlButton className="service-cta-button service-cta-terminal" source={`service_cta_${service.slug}`}>
-            [ Start project ]
+          <MissionControlButton
+            className="terminal-action is-primary service-start"
+            source={`service_cta_${service.slug}`}
+            service={service.slug}
+          >
+            <span className="terminal-action-mark" aria-hidden="true">
+              ▸
+            </span>
+            <span className="terminal-action-label">Start a {service.shortName} project</span>
+            <span className="terminal-action-arrow" aria-hidden="true">
+              →
+            </span>
           </MissionControlButton>
         </div>
         <LegalLinks className="legal-links-service" />

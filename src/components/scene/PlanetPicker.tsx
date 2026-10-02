@@ -56,7 +56,7 @@ function pickingEnabled(): boolean {
  * over the canvas and swallows pointer events, so instead of R3F's own
  * events this listens on the window and raycasts against simple spheres.
  *
- * - Journey: pointing at the stop's own planet arms its ENTER OPTION (see
+ * - Journey: pointing at the stop's own planet arms its terminal option (see
  *   JourneyCaptions) and clicking runs it; any other body jumps the journey
  *   to that body's stop.
  * - EVA: clicking a body flies the camera there and opens its terminal.

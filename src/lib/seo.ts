@@ -7,12 +7,21 @@ export const contactPhoneDisplay = "+20 11 16741301";
 /** E.164 form, for structured data. */
 export const contactPhoneE164 = "+201116741301";
 export const contactPhoneHref = `tel:${contactPhoneE164}`;
+export const whatsappHref = `https://wa.me/${contactPhoneE164.slice(1)}`;
+
+export type SocialId = "facebook" | "instagram" | "linkedin";
+
+/** The company's official profiles, in display order. */
+export const socialLinks: { id: SocialId; label: string; href: string }[] = [
+  { id: "facebook", label: "Facebook", href: "https://www.facebook.com/verve.egypt" },
+  { id: "instagram", label: "Instagram", href: "https://www.instagram.com/vervemarketingagency/" },
+  { id: "linkedin", label: "LinkedIn", href: "https://www.linkedin.com/company/verve-marketing-agency1" },
+];
 /**
- * The company's own public profiles (LinkedIn, Instagram, X…). Search engines
- * use these to tie the profiles to the site; leave empty rather than listing
- * pages that aren't official company profiles.
+ * Search engines use these to tie the profiles to the site; only list
+ * official company profiles.
  */
-export const socialProfiles: string[] = [];
+export const socialProfiles: string[] = socialLinks.map((s) => s.href);
 // Stamped at build time (next.config.ts) so server HTML and the client bundle
 // always agree; each deploy picks up the current year.
 export const copyrightNotice = `© ${process.env.BUILD_YEAR} ${siteName}. All rights reserved.`;

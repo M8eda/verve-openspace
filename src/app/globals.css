@@ -99,11 +99,8 @@ html.lenis body {
 .core-block::before,
 .core-cta::before,
 .legal-block::before,
-.contact-glass::before,
-.contact-thanks::before,
 .header-link::before,
-.service-cta-button::before,
-.contact-submit::before {
+.service-cta-button::before {
   content: "";
   position: absolute;
   top: -50%;
@@ -136,11 +133,8 @@ html.lenis body {
 .core-block,
 .core-cta,
 .legal-block,
-.contact-glass,
-.contact-thanks,
 .header-link,
-.service-cta-button,
-.contact-submit {
+.service-cta-button {
   border: 1px solid rgba(205, 247, 87, 0.35);
 }
 
@@ -162,11 +156,8 @@ html.lenis body {
   animation: none;
   transform: translate3d(0, 0, 0);
 }
-.contact-glass { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.9s; }
-.contact-thanks { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 1.2s; }
 .header-link { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.15s; }
 .service-cta-button { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.75s; }
-.contact-submit { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 1.05s; }
 
 @keyframes plasma-breathe {
   0%, 100% {
@@ -205,18 +196,17 @@ html.lenis body {
   }
 
   .glass, .service-block, .core-block,
-  .core-cta, .contact-glass, .contact-thanks, .header-link,
+  .core-cta, .header-link,
   .header-eva-dot::after,
-  .service-cta-button, .contact-submit, .assembly-word,
+  .service-cta-button, .assembly-word,
   .scroll-indicator.reveal-delayed, .plasma-text {
     animation: none !important;
   }
 
   .glass::before,
-  .service-block::before, .core-block::before, .core-cta::before, .legal-block::before, .contact-glass::before,
-  .contact-thanks::before,
+  .service-block::before, .core-block::before, .core-cta::before, .legal-block::before,
   .header-link::before,
-  .service-cta-button::before, .contact-submit::before {
+  .service-cta-button::before {
     animation: none !important;
   }
 }
@@ -720,6 +710,8 @@ html:not(.intro-ready) .scroll-indicator.reveal-delayed {
     height: 0.7rem;
     stroke-width: 3.25;
     filter: drop-shadow(0 0 5px rgba(205, 247, 87, 0.48));
+    /* Swipe gesture goes up, so the chevron does too. */
+    transform: rotate(180deg);
   }
 }
 
@@ -968,72 +960,137 @@ html:not(.intro-ready) .scroll-indicator.reveal-delayed {
   opacity: var(--content);
 }
 
-.terminal-option,
-.terminal-menu-item {
-  display: inline-block;
-  padding: 0.1rem 0.3rem 0;
-  border: 0;
-  background: none;
+/* "TAP / CLICK TO SELECT" over a menu: a label, not an input line */
+.terminal-select {
+  display: block;
+  margin-top: 0.9rem;
+  font-size: 0.72em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* Options are glass buttons that look pressable at rest, since phones have
+   no hover to reveal them. An odd first option spans the row as the main
+   action; the rest pair up. */
+.terminal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.terminal-select + .terminal-actions { margin-top: 0.45rem; }
+
+.terminal-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.3rem 0.8rem 0.2rem;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--phosphor) 8%, rgba(255, 255, 255, 0.03));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 12px color-mix(in srgb, var(--phosphor) 12%, transparent);
   color: var(--phosphor);
   font: inherit;
-  letter-spacing: inherit;
+  font-size: 0.9em;
+  letter-spacing: 0.04em;
   text-align: left;
   text-decoration: none;
   text-shadow: inherit;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    scale 0.12s ease;
 }
-.terminal-option { margin-top: 1rem; }
-.terminal-option:hover,
-.terminal-option:focus-visible,
-.terminal-option.is-armed,
-.terminal-menu-item:hover,
-.terminal-menu-item:focus-visible {
+.terminal-action.is-primary,
+.terminal-actions[data-count="1"] .terminal-action {
+  grid-column: 1 / -1;
+}
+.terminal-action.is-primary {
+  border-color: var(--phosphor);
   background: var(--phosphor);
   color: #05080a;
   text-shadow: none;
-  outline: none;
-}
-.terminal-option:hover .terminal-cursor,
-.terminal-option:focus-visible .terminal-cursor,
-.terminal-option.is-armed .terminal-cursor {
-  background: #05080a;
-  box-shadow: none;
-}
-.terminal-option.is-armed {
-  animation: terminal-armed 0.9s steps(2, end) infinite;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 0 18px color-mix(in srgb, var(--phosphor) 45%, transparent);
 }
 
-/* Numbered main menu: [1] BEGIN JOURNEY ... ENTER OPTION: [ ]_ */
-.terminal-menu {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.15rem 1.1rem;
-  margin-top: 0.85rem;
+.terminal-action-mark { flex-shrink: 0; opacity: 0.75; }
+/* Half-width buttons wrap a long label rather than cut it off */
+.terminal-action-label {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.1;
+  overflow-wrap: break-word;
 }
-.terminal-menu-item {
-  margin-left: -0.3rem;
+.terminal-action-arrow {
+  flex-shrink: 0;
+  transition: translate 0.2s ease;
 }
-.terminal-menu-key {
-  margin-right: 0.45em;
-  opacity: 0.7;
-}
-.terminal-menu-item:hover .terminal-menu-key,
-.terminal-menu-item:focus-visible .terminal-menu-key {
-  opacity: 1;
-}
-.terminal-input {
-  margin-top: 0.7rem;
-  text-transform: uppercase;
-}
-.terminal-input-slot {
-  display: inline-block;
-  min-width: 1.6em;
+
+/* Keycaps for the number keys, only where there's a keyboard to press them */
+.terminal-action-key {
+  display: none;
+  flex-shrink: 0;
+  min-width: 1.3em;
   padding: 0 0.3em;
-  text-align: left;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.72em;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0.5;
 }
-.terminal-input-slot .terminal-cursor { margin-left: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .terminal-action-key { display: inline-block; }
+
+  .terminal-action:hover {
+    background: var(--phosphor);
+    color: #05080a;
+    text-shadow: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 0 18px color-mix(in srgb, var(--phosphor) 45%, transparent);
+  }
+  .terminal-action.is-primary:hover { filter: brightness(1.12); }
+  .terminal-action:hover .terminal-action-arrow { translate: 0.25rem 0; }
+}
+
+.terminal-action:focus-visible {
+  outline: 2px solid var(--phosphor);
+  outline-offset: 2px;
+}
+.terminal-action:active { scale: 0.97; }
+
+/* Pointing at this stop's planet in the scene lights its option up */
+.terminal-action.is-armed {
+  background: var(--phosphor);
+  color: #05080a;
+  text-shadow: none;
+  animation: terminal-armed 0.9s steps(2, end) infinite;
+}
+.terminal-action.is-armed .terminal-action-arrow { translate: 0.25rem 0; }
+
+/* The press itself is the feedback on touch, where nothing hovers first */
+.terminal-action.is-chosen {
+  animation: terminal-chosen 0.4s ease-out 1;
+}
+
+@keyframes terminal-chosen {
+  0% { filter: brightness(1.9); box-shadow: 0 0 26px var(--phosphor); }
+  100% { filter: none; }
+}
 
 /* Scroll nudge: blinks in on the welcome screen after a few idle seconds,
    or sits dim under planet screens once their text is done. */
@@ -1378,9 +1435,9 @@ html:not(.intro-ready) .scroll-indicator.reveal-delayed {
   }
   .terminal-header { margin-bottom: 0.5rem; font-size: 0.95rem; }
   .terminal-line-hi { font-size: 1.22em; }
-  .terminal-option { margin-top: 0.7rem; }
-  .terminal-menu { gap: 0.1rem 0.8rem; margin-top: 0.6rem; }
-  .terminal-input { margin-top: 0.45rem; }
+  .terminal-select { margin-top: 0.65rem; }
+  .terminal-actions { margin-top: 0.75rem; }
+  .terminal-action { gap: 0.4em; padding-inline: 0.65rem; letter-spacing: 0.02em; }
   .terminal-plate { margin-top: 0.3rem; font-size: 0.72rem; }
   /* Taller hit area for thumbs; the visible bar stays thin */
   .terminal-nav-seg { height: 1.6rem; }
@@ -1412,7 +1469,8 @@ html:not(.intro-ready) .scroll-indicator.reveal-delayed {
   .terminal-summary,
   .terminal-cta,
   .terminal-nav-seg::before,
-  .terminal-option.is-armed,
+  .terminal-action.is-armed,
+  .terminal-action.is-chosen,
   .terminal-hint.is-visible,
   .terminal-screen.is-flicker,
   .terminal-tag.is-flicker {
@@ -1816,43 +1874,26 @@ html:not(.intro-ready) .scroll-indicator.reveal-delayed {
     0 6px 24px rgba(0, 0, 0, 0.3);
 }
 
-/* ENTER OPTION: [ START PROJECT ] as a terminal prompt, not a pill */
-.service-cta-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem 0.9rem;
+/* Start project: the journey terminal's primary option, in the planet colour */
+.service-launch {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 34rem;
   color: var(--phosphor);
   font-family: var(--term-font);
-  font-size: clamp(1.5rem, 3.4vw, 2rem);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: clamp(1.3rem, 2.8vw, 1.6rem);
   text-shadow: 0 0 10px color-mix(in srgb, var(--phosphor) 50%, transparent);
 }
-.service-cta-label { opacity: 0.75; }
-
-button.service-cta-button.service-cta-terminal {
-  padding: 0.15rem 0.6rem 0.05rem;
-  border: 1px solid color-mix(in srgb, var(--phosphor) 60%, transparent);
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--phosphor) 10%, rgba(4, 6, 7, 0.7));
-  color: var(--phosphor);
-  font-family: var(--term-font);
-  font-size: inherit;
-  font-weight: 400;
-  letter-spacing: inherit;
-  text-shadow: inherit;
+.service-launch-meta {
+  font-size: 0.72em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  animation: terminal-armed 0.9s steps(2, end) infinite;
+  opacity: 0.6;
 }
-.service-cta-terminal::before { display: none; }
-button.service-cta-button.service-cta-terminal:hover,
-button.service-cta-button.service-cta-terminal:focus-visible {
-  transform: none;
-  background: var(--phosphor);
-  color: #05080a;
-  text-shadow: none;
-  outline: none;
+.terminal-action.service-start {
+  min-height: 3.4rem;
+  padding: 0.35rem 1.1rem 0.25rem;
+  font-size: 1em;
 }
 
 @media (max-width: 640px) {
@@ -1864,8 +1905,7 @@ button.service-cta-button.service-cta-terminal:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .service-headline-cursor,
-  button.service-cta-button.service-cta-terminal {
+  .service-headline-cursor {
     animation: none !important;
   }
 }
@@ -2156,10 +2196,51 @@ button.service-cta-button.service-cta-terminal:focus-visible {
   margin-top: 1.75rem;
 }
 
+button.service-cta-button {
+  border: 1px solid rgba(205, 247, 87, 0.35);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.legal-links a,
+.legal-block a {
+  color: var(--emerald);
+  text-decoration: none;
+}
+.legal-links a:hover,
+.legal-block a:hover {
+  text-decoration: underline;
+}
+
+/* Social icons at the end of the legal row */
+.legal-social {
+  display: inline-flex;
+  gap: 0.15rem;
+  margin-left: auto;
+}
+.legal-links .legal-social a {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.legal-links .legal-social a:hover,
+.legal-links .legal-social a:focus-visible {
+  color: var(--phosphor, var(--emerald));
+  background: rgba(255, 255, 255, 0.06);
+}
+.legal-social .channel-icon { width: 18px; height: 18px; }
+
 /* ============================================================
-   Contact section — glass container
-   The contact section is BELOW the journey scroll runway, so it
-   must never overlap with the fixed journey-terminal overlay.
+   Contact — mission control terminal
+   The journey terminal's bezel and phosphor screen as a modal.
+   --phosphor is the brand green, or the planet colour when it's
+   opened from a service page's Start project. The screen holds
+   still (scanlines, glare) while .contact-scroll scrolls inside
+   it, with TRANSMIT docked to the bottom.
    ============================================================ */
 .contact-section {
   position: fixed;
@@ -2169,256 +2250,408 @@ button.service-cta-button.service-cta-terminal:focus-visible {
   align-items: center;
   justify-content: center;
   padding: var(--pad);
-  background: rgba(1, 2, 10, 0.55);
+  background: rgba(1, 2, 10, 0.6);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s ease;
 }
-
 .contact-section-open {
   opacity: 1;
   pointer-events: auto;
 }
 
-.contact-glass {
-  width: min(40rem, calc(100vw - var(--pad) * 2));
-  max-width: 40rem;
+.terminal-bezel.contact-term {
+  display: flex;
+  flex-direction: column;
+  width: min(42rem, 100%);
   max-height: calc(100svh - var(--pad) * 2);
-  margin: 0 auto;
-  padding: clamp(2rem, 4vw, 3rem);
   background: var(--glass-panel-bg-modal);
   backdrop-filter: var(--glass-blur-contact);
   -webkit-backdrop-filter: var(--glass-blur-contact);
-  border-radius: 24px;
-  position: relative;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-  isolation: isolate;
+  will-change: auto;
+  translate: 0 1rem;
+  transition: translate 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* Specific enough to beat the phone sheet's closed offset below */
+.contact-section-open .terminal-bezel.contact-term { translate: 0 0; }
+.contact-term:focus { outline: none; }
 
-.contact-glass::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.contact-glass::before {
-  inset: 0;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  animation: none;
-  transform: none;
-}
-
-.contact-close {
-  position: sticky;
-  z-index: 2;
-  top: 0;
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--ink);
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.contact-eyebrow {
-  position: relative;
-  z-index: 1;
-  display: block;
-  color: var(--emerald);
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 0.75rem;
-}
-
-.contact-heading {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-}
-
-.contact-lede {
-  position: relative;
-  z-index: 1;
-  margin: 1.25rem 0 0;
-  color: var(--ink-muted);
-  font-size: 1.05rem;
-  line-height: 1.55;
-  max-width: 42ch;
-}
-
-.contact-direct,
-.contact-legal {
-  position: relative;
-  z-index: 1;
-  color: var(--ink-soft);
-  line-height: 1.5;
-}
-
-.contact-direct {
-  margin: 1rem 0 0;
-  font-size: 0.92rem;
-}
-
-.contact-legal {
-  margin: -0.25rem 0 0;
-  max-width: 42rem;
-  font-size: 0.78rem;
-}
-
-.contact-legal p {
-  margin: 0.35rem 0 0;
-}
-
-.contact-direct a,
-.contact-legal a,
-.legal-links a,
-.legal-block a {
-  color: var(--emerald);
-  text-decoration: none;
-}
-
-.contact-direct a:hover,
-.contact-legal a:hover,
-.legal-links a:hover,
-.legal-block a:hover {
-  text-decoration: underline;
-}
-
-.contact-form {
-  position: relative;
-  z-index: 1;
-  margin-top: 2.5rem;
-  display: grid;
-  gap: 1.25rem;
-}
-
-.contact-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-}
-
-@media (max-width: 540px) {
-  .contact-section {
-    align-items: flex-start;
-    padding-block: 5rem 1rem;
-  }
-
-  .contact-row {
-    grid-template-columns: 1fr;
-  }
-
-  .contact-glass {
-    max-height: calc(100svh - 6rem);
-    padding: 2rem 1.25rem 1.5rem;
-    border-radius: 20px;
-  }
-}
-
-.contact-label {
+.terminal-screen.contact-screen {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: var(--ink-muted);
+  min-height: 0;
+  padding: 0.9rem 0 0;
+  font-size: 1.35rem;
+}
+/* A softer vignette: this screen is full of text right into the corners */
+.contact-screen::after {
+  background: radial-gradient(ellipse 80% 40% at 28% 4%, rgba(255, 255, 255, 0.07), transparent 60%);
+}
+
+.contact-header {
+  flex-shrink: 0;
+  padding: 0 0.9rem 0 1.15rem;
+  margin-bottom: 0.4rem;
+}
+.contact-header .terminal-tag {
+  flex: 1;
+  margin: 0;
+  font: inherit;
+  width: fit-content;
+  max-width: max-content;
+}
+.contact-header .terminal-sysid { margin-left: auto; }
+
+.contact-close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: -0.3rem -0.2rem -0.3rem 0;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 40%, transparent);
+  border-radius: 8px;
+  background: none;
+  color: var(--phosphor);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.contact-close:hover,
+.contact-close:focus-visible {
+  background: var(--phosphor);
+  color: #05080a;
+  outline: none;
+}
+
+.contact-scroll {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  /* No bottom padding: the docked TRANSMIT sits flush on the screen's edge */
+  padding: 0.2rem 1.15rem 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--phosphor) 35%, transparent) transparent;
+}
+
+.contact-boot { cursor: default; }
+.contact-boot .terminal-line-hi { margin-top: 0.5rem !important; }
+
+.contact-form {
+  display: grid;
+  gap: 1.1rem;
+  margin-top: 1.25rem;
+}
+
+.contact-prompt {
+  flex-shrink: 0;
+  font-size: 0.9em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.contact-hint {
+  margin-left: 0.35em;
+  font-size: 0.8em;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  opacity: 0.5;
+}
+.contact-q-tag { color: var(--chip); }
+
+/* NAME > ________ on one line; the message gets its prompt above */
+.contact-field {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
   min-width: 0;
 }
+.contact-field-block {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
 
-.contact-input,
-.contact-textarea {
+.contact-input {
+  flex: 1;
+  min-width: 0;
   width: 100%;
-  padding: 0.8rem 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top-color: rgba(255, 255, 255, 0.14);
-  border-radius: 12px;
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 1rem;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
-  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-}
-.contact-input:focus,
-.contact-textarea:focus {
-  outline: none;
-  border-color: rgba(205, 247, 87, 0.35);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
-    0 0 0 3px rgba(205, 247, 87, 0.08);
-}
-
-.contact-textarea {
-  resize: vertical;
-  min-height: 7rem;
-}
-
-.contact-submit {
+  padding: 0.25rem 0.1rem 0.15rem;
   border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--phosphor) 35%, transparent);
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--phosphor) 55%, white);
+  caret-color: var(--phosphor);
+  font-family: inherit;
+  /* 16px+ so iOS doesn't zoom in on focus */
+  font-size: max(1em, 16px);
+  letter-spacing: 0.03em;
+  text-shadow: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.contact-input::placeholder {
+  color: var(--phosphor);
+  opacity: 0.32;
+}
+.contact-input:focus {
+  outline: none;
+  border-bottom-color: var(--phosphor);
+  box-shadow: 0 1px 0 var(--phosphor), 0 10px 16px -12px var(--phosphor);
+}
+.contact-textarea {
+  min-height: 6.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 30%, transparent);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  line-height: 1.2;
+  resize: vertical;
+}
+.contact-textarea:focus {
+  border-color: var(--phosphor);
+  box-shadow: 0 0 14px -4px var(--phosphor);
+}
+/* Bot trap: off-screen rather than display:none, which some bots skip */
+.contact-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
-.contact-submit {
-  position: relative;
-  overflow: hidden;
-  justify-self: start;
-  padding: 0.9rem 2.2rem;
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 600;
+.contact-field.is-invalid .contact-input { border-color: #ff5a5a; }
+.contact-field.is-invalid .contact-prompt { color: #ff5a5a; }
+
+.contact-q {
+  display: grid;
+  gap: 0.45rem;
+}
+
+/* Chips: pressable tags, filled in their colour when picked */
+.contact-chips,
+.contact-fallback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.contact-chip {
+  --chip: var(--phosphor);
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.2rem 0.85rem 0.1rem;
+  border: 1px solid color-mix(in srgb, var(--chip) 45%, transparent);
   border-radius: 999px;
+  background: color-mix(in srgb, var(--chip) 7%, transparent);
+  color: color-mix(in srgb, var(--chip) 80%, white);
+  font: inherit;
+  font-size: 0.85em;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--chip) 45%, transparent);
+  text-transform: uppercase;
   cursor: pointer;
-  background: rgba(205, 247, 87, 0.1);
-  backdrop-filter: var(--glass-blur-lg);
-  -webkit-backdrop-filter: var(--glass-blur-lg);
-  transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, scale 0.12s ease;
+}
+.contact-chip[aria-pressed="true"] {
+  border-color: var(--chip);
+  background: var(--chip);
+  color: #05080a;
+  text-shadow: none;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--chip) 50%, transparent);
+}
+.contact-chip[aria-pressed="true"]::before {
+  content: "✓";
+  margin-right: 0.35em;
+}
+.contact-chip:active { scale: 0.96; }
+.contact-chip:focus-visible {
+  outline: 2px solid var(--chip);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .contact-chip:not([aria-pressed="true"]):hover {
+    background: color-mix(in srgb, var(--chip) 18%, transparent);
+    border-color: var(--chip);
+  }
 }
 
-button.service-cta-button {
-  border: 1px solid rgba(205, 247, 87, 0.35);
-  cursor: pointer;
-  font-family: inherit;
+/* TRANSMIT stays in reach while the form scrolls under it */
+.contact-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.25rem -1.15rem 0;
+  padding: 1.1rem 1.15rem 1rem;
+  background: linear-gradient(180deg, transparent, rgb(4, 6, 7) 1.1rem);
 }
-.contact-submit:hover {
-  transform: translateY(-1px);
-  background: rgba(205, 247, 87, 0.16);
-  box-shadow:
-    inset 0 1px 0 0 rgba(205, 247, 87, 0.12),
-    0 0 2rem 0.1rem rgba(205, 247, 87, 0.18),
-    0 6px 24px rgba(0, 0, 0, 0.25);
+.contact-status {
+  min-height: 1.1em;
+  margin: 0;
+  color: #ff5a5a;
+  font-size: 0.8em;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 8px rgba(255, 90, 90, 0.5);
+}
+.contact-status:empty { min-height: 0; }
+.terminal-action.contact-transmit {
+  justify-content: center;
+  min-height: 3.1rem;
+  font-size: 1em;
+}
+.contact-transmit .terminal-action-label { flex: none; }
+
+/* Transmission log and result */
+.contact-log { margin-top: 1.25rem; }
+.contact-log-line {
+  margin: 0.25rem 0 0;
+  animation: terminal-flicker 0.24s steps(2, end) 1;
+}
+.contact-log-ok { color: color-mix(in srgb, var(--phosphor) 70%, white); }
+.contact-log-err {
+  color: #ff5a5a;
+  text-shadow: 0 0 10px rgba(255, 90, 90, 0.6);
 }
 
-.contact-thanks {
-  position: relative;
-  overflow: hidden;
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: rgba(205, 247, 87, 0.04);
-  backdrop-filter: var(--glass-blur-md);
-  -webkit-backdrop-filter: var(--glass-blur-md);
-  border-radius: 14px;
-  color: var(--ink);
+.contact-result {
+  margin-top: 1rem;
+  padding: 0.85rem 0.95rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 35%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--phosphor) 6%, transparent);
+  animation: terminal-flicker 0.3s steps(2, end) 1;
+}
+.contact-result:focus { outline: none; }
+.contact-result.is-error {
+  border-color: rgba(255, 90, 90, 0.45);
+  background: rgba(255, 90, 90, 0.06);
+}
+.contact-result-hi {
+  margin: 0;
+  font-size: 1.25em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.contact-result-copy {
+  margin: 0.5rem 0 0;
+  color: color-mix(in srgb, var(--phosphor) 72%, white);
+}
+.contact-result-dim { opacity: 0.6; }
+.contact-result .contact-fallback { margin-top: 0.75rem; }
+.contact-result.is-error .contact-fallback { margin-top: 0.6rem; }
+
+/* Channels: email, phone, WhatsApp and the socials as icon keys */
+.contact-channels {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed color-mix(in srgb, var(--phosphor) 30%, transparent);
+}
+.contact-channel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.contact-channel {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 40%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--phosphor) 6%, transparent);
+  color: var(--phosphor);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--phosphor) 50%, transparent));
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease, scale 0.12s ease;
+}
+.contact-channel:hover,
+.contact-channel:focus-visible {
+  background: var(--phosphor);
+  color: #05080a;
+  outline: none;
+}
+.contact-channel:active { scale: 0.95; }
+
+.contact-legal {
+  margin-top: 1.1rem;
+  padding-bottom: 1rem;
+  color: var(--ink-soft);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
   line-height: 1.5;
+  letter-spacing: 0;
+  text-shadow: none;
 }
-.contact-thanks a {
-  color: var(--emerald);
+.contact-legal p { margin: 0.3rem 0 0; }
+.contact-legal a {
+  color: var(--phosphor);
+  text-decoration: none;
+}
+.contact-legal a:hover { text-decoration: underline; }
+
+/* Phones: a full-screen sheet */
+@media (max-width: 640px) {
+  .contact-section { padding: 0; }
+  .terminal-bezel.contact-term {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    padding: max(0.4rem, env(safe-area-inset-top)) 0.4rem max(0.4rem, env(safe-area-inset-bottom));
+    border-radius: 0;
+    border-width: 0;
+    /* Near-solid so the site behind doesn't show around the screen */
+    background: rgb(3, 5, 7);
+    box-shadow: none;
+    translate: 0 2rem;
+  }
+  .terminal-screen.contact-screen {
+    flex: 1;
+    padding-top: 0.65rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
+  }
+  .contact-header { padding: 0 0.6rem 0 0.75rem; font-size: 0.9rem; }
+  .contact-header .terminal-sysid { display: none; }
+  .contact-close { width: 2.25rem; height: 2.25rem; }
+  .contact-scroll { padding: 0.15rem 0.75rem 0; }
+  .contact-form { gap: 0.95rem; margin-top: 1rem; }
+  .contact-q { gap: 0.4rem; }
+  .contact-chips,
+  .contact-fallback { gap: 0.35rem; }
+  .contact-chip {
+    min-height: 2.5rem;
+    padding: 0.15rem 0.7rem 0.05rem;
+    font-size: 0.8em;
+  }
+  .contact-textarea { min-height: 5.5rem; }
+  .contact-dock {
+    margin-inline: -0.75rem;
+    padding: 0.75rem 0.75rem 0.75rem;
+  }
+  .terminal-action.contact-transmit { min-height: 2.9rem; }
+  .contact-channels { margin-top: 1.1rem; padding-top: 0.85rem; }
+  .contact-channel-row { gap: 0.35rem; }
+  .contact-channel { width: 2.6rem; height: 2.6rem; }
+  .contact-term .terminal-plate { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-log-line,
+  .contact-result {
+    animation: none !important;
+  }
+  .terminal-bezel.contact-term { translate: none; }
 }
 
 @property --text-effect-angle {

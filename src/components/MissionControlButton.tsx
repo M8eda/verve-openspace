@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { playGlassClick, playGlassHover } from "@/lib/audio";
 import { openContactPanel } from "@/lib/contactPanel";
 
@@ -7,10 +8,13 @@ export default function MissionControlButton({
   children,
   className,
   source = "mission_control_button",
+  service,
 }: {
-  children: string;
+  children: ReactNode;
   className: string;
   source?: string;
+  /** Opens the terminal briefed for this service (slug). */
+  service?: string;
 }) {
   return (
     <button
@@ -19,7 +23,7 @@ export default function MissionControlButton({
       onMouseEnter={() => playGlassHover()}
       onClick={() => {
         playGlassClick();
-        openContactPanel(source);
+        openContactPanel(source, service);
       }}
     >
       {children}

@@ -16,6 +16,7 @@ import { finale, finaleLayout, journeyLog, journeySummary, resetFinale } from "@
 import {
   TerminalTyper,
   isPlainClick,
+  markChosen,
   renderOptions,
   restartAnimation,
   type RenderedOptions,
@@ -70,7 +71,7 @@ export default function JourneyCaptions() {
     let interactive: boolean | null = null;
 
     let stopIdx = -1;
-    let rendered: RenderedOptions = { items: [], cursorHost: null, slot: null };
+    let rendered: RenderedOptions = { items: [], cursorHost: null };
     let announced = -1;
     let idleMs = 0;
     let hintShown = false;
@@ -115,7 +116,8 @@ export default function JourneyCaptions() {
       // Ctrl/middle clicks on a link keep the browser's own behaviour.
       if (event && option.action.type === "link" && !isPlainClick(event)) return;
       event?.preventDefault();
-      if (rendered.slot) rendered.slot.textContent = String(index + 1);
+      markChosen(rendered.items[index]);
+      playGlassClick();
       runTerminalAction(option.action, navigate, `journey_terminal_${stop.param}`);
     };
 

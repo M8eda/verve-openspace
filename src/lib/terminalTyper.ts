@@ -1,4 +1,6 @@
 import type { TerminalLine, TerminalLineKind, TerminalOption } from "@/data/terminals";
+import { playGlassHover } from "@/lib/audio";
+import { isCoarsePointer } from "@/lib/device";
 
 /** Blinking cursor on an empty screen before the first visit starts typing. */
 export const BOOT_MS = 520;
@@ -65,7 +67,7 @@ export class TerminalTyper {
     private cursor: HTMLElement,
     /** Called on every phase change, before the cursor is placed. */
     private onPhase: (phase: TypePhase) => void,
-    /** Where the cursor rests once typing is done (e.g. the option slot). */
+    /** Where the cursor rests once typing is done; null leaves it after the text. */
     private doneCursorHost: () => HTMLElement | null,
   ) {}
 
@@ -187,15 +189,26 @@ export class TerminalTyper {
 export type RenderedOptions = {
   /** Every choosable element, in option order. */
   items: HTMLElement[];
-  /** The element the cursor rests in once typing is done. */
+  /** The element the cursor rests in once typing is done (null: after the text). */
   cursorHost: HTMLElement | null;
-  /** The "[ ]" input slot of a numbered menu (shows the pressed key). */
-  slot: HTMLElement | null;
+};
+
+/** A touch that travels further than this was a swipe, not a tap. */
+const TAP_SLOP_PX = 12;
+
+const span = (className: string, text: string) => {
+  const el = document.createElement("span");
+  el.className = className;
+  el.textContent = text;
+  return el;
 };
 
 /**
- * Builds the option area. One option is a single "ENTER OPTION: [ LABEL ]"
- * control; several become a numbered menu ending in "ENTER OPTION: [ ]".
+ * Builds the option area as a grid of glass buttons that read as pressable
+ * without hovering (phones have no hover). One option is a single
+ * full-width button; with several, an odd first one spans the row as the
+ * primary action. Menus get a "TAP / CLICK TO SELECT" prompt, and on
+ * mouse devices small keycaps for the number keys that also pick them.
  * Links are real <a href>s so middle-click and "open in new tab" still work.
  */
 export function renderOptions(
@@ -204,63 +217,98 @@ export function renderOptions(
   onChoose: (index: number, event: MouseEvent) => void,
 ): RenderedOptions {
   container.replaceChildren();
-  if (options.length === 0) return { items: [], cursorHost: null, slot: null };
+  if (options.length === 0) return { items: [], cursorHost: null };
 
-  const make = (opt: TerminalOption, index: number, className: string) => {
-    const el =
-      opt.action.type === "link" ? document.createElement("a") : document.createElement("button");
-    if (el instanceof HTMLAnchorElement && opt.action.type === "link") el.href = opt.action.href;
-    if (el instanceof HTMLButtonElement) el.type = "button";
-    el.className = className;
-    el.tabIndex = -1;
-    (el as HTMLElement).addEventListener("click", (e) => {
-      e.stopPropagation();
-      onChoose(index, e);
-    });
-    return el;
-  };
+  const menu = options.length > 1;
+  const touch = isCoarsePointer();
 
-  if (options.length === 1) {
-    const el = make(options[0], 0, "terminal-option");
-    const pre = document.createElement("span");
-    pre.setAttribute("aria-hidden", "true");
-    pre.textContent = "ENTER OPTION: [ ";
-    const label = document.createElement("span");
-    label.className = "terminal-option-label";
-    label.textContent = options[0].label;
-    const post = document.createElement("span");
-    post.setAttribute("aria-hidden", "true");
-    post.textContent = " ]";
-    el.append(pre, label, post);
-    container.appendChild(el);
-    return { items: [el], cursorHost: el, slot: null };
+  if (menu) {
+    const prompt = span("terminal-select", touch ? "Tap to select" : "Click to select");
+    prompt.setAttribute("aria-hidden", "true");
+    container.appendChild(prompt);
   }
 
-  const menu = document.createElement("div");
-  menu.className = "terminal-menu";
+  const grid = document.createElement("div");
+  grid.className = "terminal-actions";
+  grid.dataset.count = String(options.length);
+
   const items = options.map((opt, i) => {
-    const el = make(opt, i, "terminal-menu-item");
-    el.dataset.key = String(i + 1);
-    const key = document.createElement("span");
-    key.className = "terminal-menu-key";
-    key.setAttribute("aria-hidden", "true");
-    key.textContent = `[${i + 1}]`;
-    const label = document.createElement("span");
-    label.textContent = opt.label;
-    el.append(key, label);
-    menu.appendChild(el);
+    let el: HTMLElement;
+    if (opt.action.type === "link") {
+      const a = document.createElement("a");
+      a.href = opt.action.href;
+      el = a;
+    } else {
+      const b = document.createElement("button");
+      b.type = "button";
+      el = b;
+    }
+    el.className = "terminal-action";
+    if (options.length % 2 === 1 && i === 0) el.classList.add("is-primary");
+    el.tabIndex = -1;
+
+    const mark = span("terminal-action-mark", "▸");
+    mark.setAttribute("aria-hidden", "true");
+    const label = span("terminal-action-label", opt.label);
+    const arrow = span("terminal-action-arrow", "→");
+    arrow.setAttribute("aria-hidden", "true");
+    el.append(mark, label);
+    if (menu) {
+      const key = span("terminal-action-key", String(i + 1));
+      key.setAttribute("aria-hidden", "true");
+      el.append(key);
+    }
+    el.append(arrow);
+
+    // A swipe that happens to start on a button moves the journey; it must
+    // not also press the button.
+    let startX = 0;
+    let startY = 0;
+    let swiped = false;
+    el.addEventListener(
+      "touchstart",
+      (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        swiped = false;
+      },
+      { passive: true },
+    );
+    el.addEventListener(
+      "touchend",
+      (e) => {
+        const t = e.changedTouches[0];
+        swiped = Math.hypot(t.clientX - startX, t.clientY - startY) > TAP_SLOP_PX;
+      },
+      { passive: true },
+    );
+    el.addEventListener("pointerenter", (e) => {
+      if (e.pointerType === "mouse") playGlassHover();
+    });
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (swiped) {
+        swiped = false;
+        e.preventDefault();
+        return;
+      }
+      onChoose(i, e);
+    });
+
+    grid.appendChild(el);
     return el;
   });
 
-  const input = document.createElement("div");
-  input.className = "terminal-input";
-  input.setAttribute("aria-hidden", "true");
-  const slot = document.createElement("span");
-  slot.className = "terminal-input-slot";
-  input.append("ENTER OPTION: [", slot, "]");
+  container.appendChild(grid);
+  return { items, cursorHost: null };
+}
 
-  container.append(menu, input);
-  return { items, cursorHost: slot, slot };
+/** Press feedback on a chosen option: a quick flash, and a short buzz on
+    phones that support it. */
+export function markChosen(el: HTMLElement | undefined) {
+  if (!el) return;
+  restartAnimation(el, "is-chosen");
+  if (isCoarsePointer()) navigator.vibrate?.(10);
 }
 
 /** Plain left-clicks get client-side navigation; anything else is left to

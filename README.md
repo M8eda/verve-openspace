@@ -172,7 +172,7 @@ docs/                   README screenshot (not deployed)
 
 ## Status
 
-The site is production-ready as a static agency experience. The contact form currently uses an email handoff; a server-side contact endpoint is planned.
+The site is production-ready. The contact terminal posts to `/api/contact`, which sends the brief over SMTP (see `.env.example`); without SMTP settings it falls back to an email handoff through the visitor's mail app.
 
 ## License
 

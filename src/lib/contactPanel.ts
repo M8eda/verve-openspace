@@ -3,16 +3,22 @@ import { lockPageScroll, unlockPageScroll } from "@/lib/scrollLock";
 
 type Listener = (open: boolean) => void;
 let isOpen = false;
+/** Service slug the panel was opened for (a "Start project" button), if any. */
+let openService: string | null = null;
 const listeners = new Set<Listener>();
 const CONTACT_SCROLL_LOCK = "contact-panel";
 
 export function isContactOpen(): boolean {
   return isOpen;
 }
-export function openContactPanel(source = "unknown"): void {
+export function contactService(): string | null {
+  return openService;
+}
+export function openContactPanel(source = "unknown", service?: string): void {
   if (isOpen) return;
   isOpen = true;
-  trackEvent("contact_open", { source });
+  openService = service ?? null;
+  trackEvent("contact_open", { source, service_slug: service });
   lockPageScroll(CONTACT_SCROLL_LOCK);
   listeners.forEach((l) => l(true));
 }

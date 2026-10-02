@@ -15,6 +15,7 @@ import { trackEvent } from "@/lib/analytics";
 import {
   TerminalTyper,
   isPlainClick,
+  markChosen,
   renderOptions,
   restartAnimation,
   type RenderedOptions,
@@ -100,7 +101,7 @@ export default function EvaConsole() {
     const reduceMotion = prefersReducedMotion();
     const seen = new Set<string>();
     let shownId: string | null = null;
-    let rendered: RenderedOptions = { items: [], cursorHost: null, slot: null };
+    let rendered: RenderedOptions = { items: [], cursorHost: null };
 
     const typer = new TerminalTyper(
       body,
@@ -127,7 +128,7 @@ export default function EvaConsole() {
       if (!option) return false;
       if (event && option.action.type === "link" && !isPlainClick(event)) return true;
       event?.preventDefault();
-      if (rendered.slot) rendered.slot.textContent = String(index + 1);
+      markChosen(rendered.items[index]);
       playGlassClick();
       runTerminalAction(option.action, navigate, `eva_terminal_${shownId}`);
       return true;
@@ -169,7 +170,7 @@ export default function EvaConsole() {
     const hide = () => {
       if (!shownId) return;
       shownId = null;
-      rendered = { items: [], cursorHost: null, slot: null };
+      rendered = { items: [], cursorHost: null };
       root.setAttribute("data-hidden", "true");
     };
 
