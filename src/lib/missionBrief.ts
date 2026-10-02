@@ -8,6 +8,8 @@ export type BriefInput = {
   missionId: string;
   name: string;
   email: string;
+  /** Optional; empty when not given. */
+  phone: string;
   message: string;
   /** Service slugs, in any order. */
   services: string[];
@@ -30,12 +32,19 @@ export type Brief = {
 export const BRIEF_LIMITS = {
   name: 100,
   email: 254,
+  phone: 24,
   message: 5000,
   answer: 200,
   page: 500,
 };
 
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Digits with the usual separators and an optional leading +, 7 to 15 digits. */
+export function isPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, "").length;
+  return /^\+?[\d\s().-]+$/.test(value) && digits >= 7 && digits <= 15;
+}
 
 export function answerText(value: string | string[] | undefined): string {
   if (!value) return "";
@@ -61,6 +70,8 @@ export function composeBrief(input: BriefInput): Brief {
       : "";
 
   const lines = [`Mission: ${input.missionId}`, `Name: ${name}`, `Email: ${input.email.trim()}`];
+  const phone = input.phone.trim();
+  if (phone) lines.push(`Phone: ${phone}`);
   if (picked.length > 0) lines.push(`Services: ${picked.map((s) => s.shortName).join(", ")}`);
   if (input.budget) lines.push(`Budget: ${input.budget}`);
   for (const { service, question } of activeQuestions(input.services)) {

@@ -15,6 +15,7 @@ import {
   BRIEF_LIMITS,
   activeQuestions,
   composeBrief,
+  isPhone,
   type Answers,
   type Brief,
   type BriefInput,
@@ -38,7 +39,7 @@ const BRAND = "#cdf757";
 const LOG_STEP_MS = 420;
 
 type Phase = "form" | "sending" | "sent" | "error";
-type Fields = { name: string; email: string; message: string };
+type Fields = { name: string; email: string; phone: string; message: string };
 type Delivery = { via: "api"; confirmation: boolean } | { via: "mailto" };
 type Outcome = Delivery | { via: "invalid"; field: keyof Fields } | { via: "error"; reason: "rate" | "failed" };
 
@@ -96,8 +97,8 @@ async function transmit(
     return { via: "mailto" };
   }
   if (res.status === 429) return { via: "error", reason: "rate" };
-  if (res.status === 400 && (data.field === "name" || data.field === "email" || data.field === "message")) {
-    return { via: "invalid", field: data.field };
+  if (res.status === 400 && data.field && data.field in FIELD_ERRORS) {
+    return { via: "invalid", field: data.field as keyof Fields };
   }
   return { via: "error", reason: "failed" };
 }
@@ -105,6 +106,7 @@ async function transmit(
 const FIELD_ERRORS: Record<keyof Fields, string> = {
   name: "[ERR] NAME REQUIRED",
   email: "[ERR] EMAIL LOOKS OFF",
+  phone: "[ERR] PHONE LOOKS OFF",
   message: "[ERR] PICK A SERVICE OR TELL US ABOUT THE MISSION",
 };
 
@@ -161,7 +163,7 @@ export default function ContactForm() {
   const [missionId, setMissionId] = useState("");
   const [phase, setPhase] = useState<Phase>("form");
   const [logStep, setLogStep] = useState(0);
-  const [fields, setFields] = useState<Fields>({ name: "", email: "", message: "" });
+  const [fields, setFields] = useState<Fields>({ name: "", email: "", phone: "", message: "" });
   const [selected, setSelected] = useState<string[]>([]);
   const [budget, setBudget] = useState("");
   const [answers, setAnswers] = useState<Answers>({});
@@ -185,7 +187,7 @@ export default function ContactForm() {
       if (sentRef.current) {
         sentRef.current = false;
         setPhase("form");
-        setFields({ name: "", email: "", message: "" });
+        setFields({ name: "", email: "", phone: "", message: "" });
         setSelected([]);
         setBudget("");
         setAnswers({});
@@ -356,6 +358,9 @@ export default function ContactForm() {
     if (!fields.email.trim() || (emailInput && !emailInput.checkValidity())) {
       return fail("email", FIELD_ERRORS.email);
     }
+    if (fields.phone.trim() && !isPhone(fields.phone.trim())) {
+      return fail("phone", FIELD_ERRORS.phone);
+    }
     if (!fields.message.trim() && selected.length === 0) {
       return fail("message", FIELD_ERRORS.message);
     }
@@ -366,6 +371,7 @@ export default function ContactForm() {
       missionId,
       name: fields.name,
       email: fields.email,
+      phone: fields.phone,
       message: fields.message,
       services: selected,
       budget,
@@ -531,6 +537,23 @@ export default function ContactForm() {
                     maxLength={BRIEF_LIMITS.email}
                     required
                     aria-invalid={error?.field === "email"}
+                  />
+                </label>
+                <label className={`contact-field${error?.field === "phone" ? " is-invalid" : ""}`}>
+                  <span className="contact-prompt">Phone &gt;</span>
+                  <input
+                    className="contact-input"
+                    type="tel"
+                    name="phone"
+                    value={fields.phone}
+                    onChange={(e) => setField("phone", e.target.value)}
+                    onKeyDown={onFieldEnter}
+                    placeholder="optional"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    enterKeyHint="next"
+                    maxLength={BRIEF_LIMITS.phone}
+                    aria-invalid={error?.field === "phone"}
                   />
                 </label>
                 {/* Bot trap: hidden from people and screen readers, bots fill it in */}

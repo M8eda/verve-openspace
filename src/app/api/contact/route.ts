@@ -7,6 +7,7 @@ import {
   EMAIL_PATTERN,
   activeQuestions,
   composeBrief,
+  isPhone,
   type Answers,
   type BriefInput,
 } from "@/lib/missionBrief";
@@ -107,6 +108,7 @@ function cleanAnswers(raw: unknown, selected: string[]): Answers {
 function parse(body: Record<string, unknown>): BriefInput | Failure {
   const name = line(body.name, BRIEF_LIMITS.name);
   const email = line(body.email, BRIEF_LIMITS.email);
+  const phone = line(body.phone, BRIEF_LIMITS.phone);
   const message = block(body.message, BRIEF_LIMITS.message);
   const selected = Array.isArray(body.services)
     ? [...new Set(body.services.filter((s): s is string => typeof s === "string" && !!getServiceBySlug(s)))]
@@ -114,6 +116,7 @@ function parse(body: Record<string, unknown>): BriefInput | Failure {
 
   if (!name) return { status: 400, error: "invalid", field: "name" };
   if (!EMAIL_PATTERN.test(email)) return { status: 400, error: "invalid", field: "email" };
+  if (phone && !isPhone(phone)) return { status: 400, error: "invalid", field: "phone" };
   if (!message && selected.length === 0) return { status: 400, error: "invalid", field: "message" };
 
   const missionId = typeof body.missionId === "string" && MISSION_PATTERN.test(body.missionId)
@@ -127,6 +130,7 @@ function parse(body: Record<string, unknown>): BriefInput | Failure {
     missionId,
     name,
     email,
+    phone,
     message,
     services: selected,
     budget,
