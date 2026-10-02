@@ -7,11 +7,16 @@ import { services, type Service } from "@/data/services";
 import { fixedOrbitTime, orbitAngle, orbitPointAt } from "@/lib/orbit";
 import { isFreeMode } from "@/lib/freeMode";
 import { overviewStrength } from "@/lib/mapVisibility";
+import { coreStrength, finale, FINALE_ORDER } from "@/lib/finale";
 
 const SEGMENTS = 240;
 const TAU = Math.PI * 2;
 /** Trails stay up in EVA, but quieter, so free roam still reads as a map. */
 const EVA_STRENGTH = 0.5;
+/** Steady brightness of an orbit the finale has checked off. */
+const FINALE_STRENGTH = 0.7;
+/** How fast a check-off flash dies away (per second, exponential). */
+const FLASH_DECAY = 2.4;
 
 const trailVertex = /* glsl */ `
 attribute float aAngle;
@@ -23,17 +28,19 @@ void main() {
 `;
 
 // Faint full orbit plus a comet tail that is brightest at the planet and
-// fades out over the trailing half of the orbit.
+// fades out over the trailing half of the orbit. uFlash lights the whole
+// ring evenly, hot enough to bloom, when the finale checks it off.
 const trailFragment = /* glsl */ `
 uniform vec3 uColor;
 uniform float uHead;
 uniform float uOpacity;
+uniform float uFlash;
 varying float vAngle;
 void main() {
   float behind = mod(uHead - vAngle, 6.28318530718) / 6.28318530718;
   float tail = pow(1.0 - behind, 3.2);
-  float alpha = uOpacity * (0.14 + 0.86 * tail);
-  gl_FragColor = vec4(uColor * (0.75 + 0.6 * tail), alpha);
+  float alpha = min(1.0, uOpacity * (0.14 + 0.86 * tail) + uFlash * 0.8);
+  gl_FragColor = vec4(uColor * (0.75 + 0.6 * tail + uFlash * 1.6), alpha);
   #include <colorspace_fragment>
 }
 `;
@@ -55,7 +62,11 @@ function buildGeometry(service: Service) {
   return geometry;
 }
 
-/** Each planet's real orbit, drawn in its own colour, for the overview map. */
+/**
+ * Each planet's real orbit, drawn in its own colour: the overview map, and
+ * the finale, where the core's systems check lights them one at a time from
+ * the outside in.
+ */
 export default function OrbitTrails({ reduceMotion = false }: { reduceMotion?: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
 
@@ -73,11 +84,15 @@ export default function OrbitTrails({ reduceMotion = false }: { reduceMotion?: b
             uColor: { value: new THREE.Color(service.visual.color) },
             uHead: { value: 0 },
             uOpacity: { value: 0 },
+            uFlash: { value: 0 },
           },
         });
         const line = new THREE.Line(buildGeometry(service), material);
         line.frustumCulled = false;
-        return { service, line, material };
+        // Finale state: position in the systems check, eased 0..1 lit level,
+        // and the flash from the moment it was checked off.
+        const rank = FINALE_ORDER.indexOf(service);
+        return { service, line, material, rank, level: 0, flash: 0, on: false };
       }),
     [],
   );
@@ -92,17 +107,35 @@ export default function OrbitTrails({ reduceMotion = false }: { reduceMotion?: b
     [trails],
   );
 
-  useFrame(({ clock }) => {
-    const strength = isFreeMode() ? EVA_STRENGTH : overviewStrength();
+  useFrame(({ clock }, delta) => {
+    const free = isFreeMode();
+    const strength = free ? EVA_STRENGTH : overviewStrength();
+    const core = free ? 0 : coreStrength();
+    const dt = Math.min(delta, 0.05);
     const group = groupRef.current;
     if (!group) return;
-    group.visible = strength > 0.002;
-    if (!group.visible) return;
 
-    for (const { service, material } of trails) {
+    let any = strength > 0.002;
+    for (const trail of trails) {
+      const on = core > 0 && trail.rank < finale.lit;
+      // Flash only when checked off live; a revisit just shows them lit.
+      if (on && !trail.on && !finale.instant && !reduceMotion) trail.flash = 1;
+      trail.on = on;
+      trail.level =
+        reduceMotion || finale.instant
+          ? Number(on)
+          : THREE.MathUtils.damp(trail.level, Number(on), on ? 6 : 3, dt);
+      trail.flash *= Math.exp(-FLASH_DECAY * dt);
+      if (trail.level > 0.002) any = true;
+    }
+    group.visible = any;
+    if (!any) return;
+
+    for (const { service, material, level, flash } of trails) {
       const t = reduceMotion ? fixedOrbitTime(service) : clock.elapsedTime;
       material.uniforms.uHead.value = orbitAngle(service, t) % TAU;
-      material.uniforms.uOpacity.value = strength * 0.85;
+      material.uniforms.uOpacity.value = Math.max(strength * 0.85, core * level * FINALE_STRENGTH);
+      material.uniforms.uFlash.value = core * flash;
     }
   });
 

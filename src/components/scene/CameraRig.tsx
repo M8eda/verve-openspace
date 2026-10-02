@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { CAMERA_END } from "@/lib/constants";
+import { CAMERA_END, CAMERA_END_PUSH } from "@/lib/constants";
+import { finale, finaleLayout, FINALE_PUSH_MS } from "@/lib/finale";
 import { services } from "@/data/services";
 import { getPlanetPosition } from "@/lib/planetPositions";
 import { isCoarsePointer, prefersReducedMotion } from "@/lib/device";
@@ -25,6 +26,10 @@ const STACKED_MAX_WIDTH = 768;
  *  rightward when it sits on the left, upward when it's docked below. */
 const SIDE_SHIFT = 0.18;
 const STACKED_SHIFT = 0.2;
+/** At the core the terminal centres along the bottom (taller on mobile), so
+ *  the shift turns upward to keep the core in the space above it. */
+const FINALE_SHIFT = 0.28;
+const FINALE_STACKED_SHIFT = 0.3;
 
 /**
  * Overview "drone shot": a tilted aerial view of the whole system that
@@ -51,21 +56,29 @@ function smoothstep(x: number) {
 
 /**
  * Off-centre projection so whatever the camera looks at renders beside the
- * journey (or EVA) terminal instead of behind it. `amount` is 0..1. Only
- * touches the projection when the offset actually changes.
+ * journey (or EVA) terminal instead of behind it. `amount` is 0..1 and
+ * `finaleMix` 0..1 blends into the finale layout. Only touches the
+ * projection when the offset actually changes.
  */
 function applyLensShift(
   camera: THREE.Camera,
   width: number,
   height: number,
   amount: number,
+  finaleMix: number,
   last: { x: number; y: number; w: number; h: number },
 ) {
   if (!(camera instanceof THREE.PerspectiveCamera)) return;
 
   const stacked = width <= STACKED_MAX_WIDTH;
-  const x = stacked ? 0 : Math.round(-width * SIDE_SHIFT * amount);
-  const y = stacked ? Math.round(height * STACKED_SHIFT * amount) : 0;
+  const x = stacked ? 0 : Math.round(-width * SIDE_SHIFT * amount * (1 - finaleMix));
+  const y = Math.round(
+    height *
+      amount *
+      (stacked
+        ? THREE.MathUtils.lerp(STACKED_SHIFT, FINALE_STACKED_SHIFT, finaleMix)
+        : FINALE_SHIFT * finaleMix),
+  );
 
   if (x === last.x && y === last.y && width === last.w && height === last.h) return;
   last.x = x;
@@ -100,6 +113,11 @@ export default function CameraRig() {
   const lensShift = useRef({ x: 0, y: 0, w: 0, h: 0 });
   const lensAmount = useRef(0);
   const drone = useRef(new THREE.Vector3());
+  const endDir = useMemo(
+    () => new THREE.Vector3(CAMERA_END.dir.x, CAMERA_END.dir.y, CAMERA_END.dir.z).normalize(),
+    [],
+  );
+  const push = useRef(0);
   const scratch = useRef({
     outward: new THREE.Vector3(),
     side: new THREE.Vector3(),
@@ -150,7 +168,14 @@ export default function CameraRig() {
     const lensTarget = free ? (getFocus() ? 1 : 0) : smoothstep((P - 0.6) / 0.4);
     lensAmount.current =
       free && !reduceMotion ? THREE.MathUtils.damp(lensAmount.current, lensTarget, 5, dt) : lensTarget;
-    applyLensShift(state.camera, state.size.width, state.size.height, lensAmount.current, lensShift.current);
+    applyLensShift(
+      state.camera,
+      state.size.width,
+      state.size.height,
+      lensAmount.current,
+      free ? 0 : finaleLayout(),
+      lensShift.current,
+    );
     if (free) return;
 
     const stacked = state.size.width <= STACKED_MAX_WIDTH;
@@ -233,7 +258,12 @@ export default function CameraRig() {
       look[k + 1].copy(planet);
     }
 
-    pos[pos.length - 1].set(CAMERA_END.x, CAMERA_END.y, CAMERA_END.z);
+    // The finale: a wide shot of the core with the orbits around it, then a
+    // slow push in while the visitor sits there. Eases back out on leaving.
+    const pushTarget = reduceMotion ? 0 : smoothstep(finale.elapsed / FINALE_PUSH_MS);
+    push.current = reduceMotion ? 0 : THREE.MathUtils.damp(push.current, pushTarget, 2, dt);
+    const endDistance = (stacked ? CAMERA_END.stackedDistance : CAMERA_END.distance) - push.current * CAMERA_END_PUSH;
+    pos[pos.length - 1].copy(endDir).multiplyScalar(endDistance);
     look[look.length - 1].set(0, 0, 0);
 
     // Map P across the service/core curve segments.

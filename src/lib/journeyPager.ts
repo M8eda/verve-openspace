@@ -19,8 +19,18 @@ export const pagerState = {
   locked: false,
 };
 
+/** Puts the journey back at the hero without animating. Only for when the
+    home page isn't mounted (nothing is flying); on home use jumpToPage(0). */
+export function resetPager(): void {
+  pagerState.index = 0;
+  pagerState.fromIndex = 0;
+  pagerState.toIndex = 0;
+  pagerState.t = 1;
+  pagerState.locked = false;
+}
+
 /** Continuous position derived from pager state, 0..PAGE_COUNT-1.
-    This is what CameraRig/Galaxy/JourneyTimeline actually read. */
+    This is what CameraRig/Galaxy/JourneyNav actually read. */
 export function pagerPosition(): number {
   return pagerState.fromIndex + pagerState.t * (pagerState.toIndex - pagerState.fromIndex);
 }

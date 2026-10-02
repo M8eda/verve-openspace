@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import DebugHud from "@/components/DebugHud";
 import JourneyCaptions from "@/components/JourneyCaptions";
-import JourneyTimeline from "@/components/JourneyTimeline";
 import JourneyPager from "@/components/JourneyPager";
 import { services } from "@/data/services";
 import { defaultDescription, defaultOgImage, defaultTitle, seoKeywords, siteName } from "@/lib/seo";
@@ -43,7 +42,7 @@ export default function HomePage() {
     <>
       <section className="hero">
         <div className="hero-content">
-          <p className="hero-eyebrow">Verve / Digital Growth System</p>
+          <p className="hero-eyebrow hero-rise">Verve / Digital Growth System</p>
           <h1 className="hero-title">
             <span className="hero-line hero-line-1">
               <span className="assembly-word" style={assemblyDelay(0)}>Own&nbsp;</span>
@@ -55,8 +54,8 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="hero-support">
-            <span>We don&rsquo;t just launch brands.</span>
-            <span>We engineer the gravity they orbit.</span>
+            <span className="hero-rise">We don&rsquo;t just launch brands.</span>
+            <span className="hero-rise">We engineer the gravity they orbit.</span>
           </p>
           <div className="hero-subtitle">
             <span className="scroll-indicator reveal-delayed">
@@ -72,7 +71,6 @@ export default function HomePage() {
 
       <JourneyPager />
 
-      <JourneyTimeline />
       <JourneyCaptions />
       <DebugHud />
 

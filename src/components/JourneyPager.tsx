@@ -25,6 +25,13 @@ function smoothstep(x: number) {
 
 const JOURNEY_SCROLL_LOCK = "journey-pager";
 
+/** Furthest the on-screen copy follows a finger mid-swipe, in px. */
+const DRAG_MAX_PX = 44;
+/** Share of the finger's travel the copy follows; stiffer where a swipe leads nowhere. */
+const DRAG_FOLLOW = 0.3;
+const DRAG_FOLLOW_AT_END = 0.1;
+const DRAG_RELEASE = "translate 0.45s cubic-bezier(0.19, 1, 0.22, 1)";
+
 export default function JourneyPager() {
   const containerRef = useRef<HTMLDivElement>(null);
   const engagedRef = useRef<boolean>(false);
@@ -52,6 +59,12 @@ export default function JourneyPager() {
       window.history.scrollRestoration = "manual";
     }
 
+    // Coming back from a page the visitor scrolled down (or via the back
+    // button) can leave the window offset. The journey is drawn on a fixed
+    // canvas, so any offset just pushes the hero copy up the screen, and
+    // locking the body below would freeze it there.
+    window.scrollTo(0, 0);
+
     // If we're returning to the home page after already entering the
     // journey, pagerState.index is still wherever the user left it, but
     // engagedRef reset to false on this remount. Re-engage so wheel,
@@ -60,8 +73,6 @@ export default function JourneyPager() {
       engagedRef.current = true;
       pauseLenis();
       lockPageScroll(JOURNEY_SCROLL_LOCK);
-    } else {
-      window.scrollTo(0, 0);
     }
 
     // Leaving home mid-journey (e.g. "Explore planet") must hand scrolling
@@ -179,6 +190,18 @@ export default function JourneyPager() {
       }
     };
 
+    // A swipe only steps once the finger lifts, so the copy on screen (hero
+    // or terminal) trails the finger meanwhile to show the gesture landed.
+    const reduceMotion = prefersReducedMotion();
+    let dragEl: HTMLElement | null = null;
+
+    const releaseDrag = () => {
+      if (!dragEl) return;
+      dragEl.style.transition = DRAG_RELEASE;
+      dragEl.style.translate = "";
+      dragEl = null;
+    };
+
     const handleTouchStart = (e: TouchEvent) => {
       if (isFreeMode() || isContactOpen()) return;
       touchStartYRef.current = e.touches[0].clientY;
@@ -188,9 +211,22 @@ export default function JourneyPager() {
       if (isFreeMode() || isContactOpen()) return;
       if (!engagedRef.current) return;
       e.preventDefault();
+      if (reduceMotion || pagerState.locked) return;
+
+      dragEl ??= document.querySelector<HTMLElement>(
+        pagerState.index === 0 ? ".hero-content" : ".journey-terminal .terminal-bezel",
+      );
+      if (!dragEl) return;
+      const deltaY = touchStartYRef.current - e.touches[0].clientY;
+      const atEnd = pagerState.index === PAGE_COUNT - 1 && deltaY > 0;
+      const follow = -deltaY * (atEnd ? DRAG_FOLLOW_AT_END : DRAG_FOLLOW);
+      const offset = Math.max(-DRAG_MAX_PX, Math.min(DRAG_MAX_PX, follow));
+      dragEl.style.transition = "none";
+      dragEl.style.translate = `0 ${offset.toFixed(1)}px`;
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
+      releaseDrag();
       if (isFreeMode() || isContactOpen()) return;
       const endY = e.changedTouches[0].clientY;
       const deltaY = touchStartYRef.current - endY;
@@ -253,6 +289,7 @@ export default function JourneyPager() {
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", releaseDrag, { passive: true });
     window.addEventListener("keydown", handleKeyDown);
 
     let lastProgress = "";
@@ -268,6 +305,10 @@ export default function JourneyPager() {
         window.scrollTo(0, 0);
         setEngaged(true);
         step(1);
+      } else if (engagedRef.current && scrollY !== 0) {
+        // Locked pages can still be nudged (late scroll restoration, mobile
+        // URL bar resizes, a fling that outlived the lock). Pin it back.
+        window.scrollTo(0, 0);
       }
 
       const p = pagerPosition();
@@ -282,9 +323,12 @@ export default function JourneyPager() {
 
       heroEl ??= document.querySelector(".hero") as HTMLElement | null;
       if (heroEl) {
-        const nextOpacity = Math.max(0, 1 - p * 2).toFixed(3);
+        const leave = Math.min(1, p * 2);
+        const nextOpacity = (1 - leave).toFixed(3);
         if (nextOpacity !== lastHeroOpacity) {
           heroEl.style.opacity = nextOpacity;
+          // Eased so the copy accelerates away rather than sliding linearly.
+          heroEl.style.setProperty("--leave", (leave * leave).toFixed(3));
           lastHeroOpacity = nextOpacity;
         }
 
@@ -309,10 +353,12 @@ export default function JourneyPager() {
       cancelTransitionRef.current = null;
       pagerState.locked = false;
       unsubscribeFrame();
+      releaseDrag();
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", releaseDrag);
       window.removeEventListener("keydown", handleKeyDown);
       unlockPageScroll(JOURNEY_SCROLL_LOCK);
     };

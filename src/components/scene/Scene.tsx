@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { PerformanceMonitor } from "@react-three/drei";
@@ -10,6 +10,7 @@ import CameraRig from "./CameraRig";
 import FreeLookControls from "./FreeLookControls";
 import OrbitTrails from "./OrbitTrails";
 import CoreEmblem from "./CoreEmblem";
+import CoreFinale from "./CoreFinale";
 import PlanetTags from "./PlanetTags";
 import PlanetPicker from "./PlanetPicker";
 import Galaxy from "./Galaxy";
@@ -37,8 +38,9 @@ export default function Scene({ dpr, onCompiled }: SceneProps) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
-  // Set once the frame rate keeps flip-flopping even at the lowest DPR.
+  // Set once the frame rate stays too low even at the lowest DPR.
   const [struggling, setStruggling] = useState(false);
+  const atFloor = useRef(false);
   const enablePost = !isWeak && !reduceMotion && !struggling;
   // On 2x+ screens every CSS pixel already spans 4+ device pixels, so 4x MSAA
   // edges look the same as the library's 8x default at half the buffer size
@@ -84,13 +86,22 @@ export default function Scene({ dpr, onCompiled }: SceneProps) {
 
   return (
     <>
+      {/* Fixed fps bounds rather than drei's refresh-relative default, which
+          calls 55fps "slow" on a 120Hz screen. 28 leaves headroom for battery
+          saver modes that cap frames at 30 on otherwise capable devices.
+          Samples cover 5s so a scroll hitch alone can't trigger a step. */}
       <PerformanceMonitor
         factor={1}
-        flipflops={3}
+        ms={500}
+        bounds={() => [28, 50]}
         onChange={({ factor }) => applyFactor(factor)}
-        onFallback={() => {
-          applyFactor(0);
-          setStruggling(true);
+        onIncline={() => {
+          atFloor.current = false;
+        }}
+        onDecline={({ factor }) => {
+          // Only drop bloom when a step down at the lowest DPR still isn't enough.
+          if (factor === 0 && atFloor.current) setStruggling(true);
+          atFloor.current = factor === 0;
         }}
       />
       <color attach="background" args={["#010203"]} />
@@ -134,6 +145,7 @@ export default function Scene({ dpr, onCompiled }: SceneProps) {
         ))}
 
       <VerveCore reduceMotion={reduceMotion} />
+      <CoreFinale reduceMotion={reduceMotion} />
       <EcosystemPlanet reduceMotion={reduceMotion} />
       <CameraRig />
       <FreeLookControls />

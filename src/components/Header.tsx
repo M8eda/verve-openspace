@@ -15,6 +15,9 @@ import {
 import { playGlassHover, playGlassClick, isSoundOn, setSoundOn, subscribeSound } from "@/lib/audio";
 import { trackEvent } from "@/lib/analytics";
 import { openContactPanel } from "@/lib/contactPanel";
+import { resetPager } from "@/lib/journeyPager";
+import { jumpToPage } from "@/components/JourneyPager";
+import { isPlainClick } from "@/lib/terminalTyper";
 
 export default function Header() {
   const router = useRouter();
@@ -60,9 +63,25 @@ export default function Header() {
     router.push("/");
   };
 
+  // The logo always lands on the hero. A plain link to "/" does nothing on
+  // the home page mid-journey (same route), and coming back from another
+  // page would resume the journey wherever it was left.
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isPlainClick(e.nativeEvent)) return;
+    e.preventDefault();
+    trackEvent("logo_home", { source: "header" });
+    closeFreeMode();
+    if (window.location.pathname === "/") {
+      jumpToPage(0);
+      return;
+    }
+    resetPager();
+    router.push("/");
+  };
+
   return (
     <header className="site-header">
-      <Link className="wordmark" href="/" aria-label="Verve, home">
+      <Link className="wordmark" href="/" aria-label="Verve, home" onClick={handleLogoClick}>
         <Image src="/icon.svg" alt="" className="wordmark-logo" aria-hidden="true" width={28} height={28} priority />
         <span>Verve</span>
         <span className="wordmark-dot" aria-hidden="true" />

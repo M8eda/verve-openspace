@@ -101,7 +101,6 @@ html.lenis body {
 .legal-block::before,
 .contact-glass::before,
 .contact-thanks::before,
-.journey-hud-card::before,
 .header-link::before,
 .service-cta-button::before,
 .contact-submit::before {
@@ -139,7 +138,6 @@ html.lenis body {
 .legal-block,
 .contact-glass,
 .contact-thanks,
-.journey-hud-card,
 .header-link,
 .service-cta-button,
 .contact-submit {
@@ -166,7 +164,6 @@ html.lenis body {
 }
 .contact-glass { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.9s; }
 .contact-thanks { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 1.2s; }
-.journey-hud-card { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 1.5s; }
 .header-link { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.15s; }
 .service-cta-button { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 0.75s; }
 .contact-submit { animation: plasma-breathe 4.5s ease-in-out infinite; animation-delay: 1.05s; }
@@ -208,7 +205,7 @@ html.lenis body {
   }
 
   .glass, .service-block, .core-block,
-  .core-cta, .contact-glass, .contact-thanks, .journey-hud-card, .header-link,
+  .core-cta, .contact-glass, .contact-thanks, .header-link,
   .header-eva-dot::after,
   .service-cta-button, .contact-submit, .assembly-word,
   .scroll-indicator.reveal-delayed, .plasma-text {
@@ -217,7 +214,7 @@ html.lenis body {
 
   .glass::before,
   .service-block::before, .core-block::before, .core-cta::before, .legal-block::before, .contact-glass::before,
-  .contact-thanks::before, .journey-hud-card::before,
+  .contact-thanks::before,
   .header-link::before,
   .service-cta-button::before, .contact-submit::before {
     animation: none !important;
@@ -235,6 +232,17 @@ html.lenis body {
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem var(--pad);
+}
+
+/* Dark scrim so the logo and pills stay readable over bright scenes (the
+   core finale especially). Behind the header's content, never in its way. */
+.site-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -2.5rem 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(1, 2, 3, 0.62) 0%, rgba(1, 2, 3, 0.3) 55%, rgba(1, 2, 3, 0) 100%);
 }
 
 .wordmark {
@@ -314,6 +322,16 @@ html.lenis body {
 }
 .header-eva.is-new {
   animation: eva-beacon 2.4s ease-in-out infinite;
+}
+@keyframes hud-ping {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  75%, 100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }
 @keyframes eva-beacon {
   0%, 100% {
@@ -409,8 +427,9 @@ button:focus-visible {
   flex-direction: column;
   justify-content: flex-end;
   padding: 0 var(--pad) clamp(3rem, 10vh, 6rem);
-  opacity: clamp(0, calc(1 - var(--p) * 20), 1);
-  transform: translateY(calc(var(--p) * -200px));
+  /* --leave (0..1, set by JourneyPager) lifts the copy away as the camera
+     heads for the first stop, and settles it back on the way home. */
+  transform: translateY(calc(var(--leave, 0) * -12vh));
   will-change: opacity, transform;
   transition: opacity 0.25s ease, visibility 0.25s ease;
 }
@@ -446,8 +465,8 @@ button:focus-visible {
   line-height: 0.9;
   letter-spacing: -0.055em;
   perspective: 1000px;
-  transform: translateY(calc(var(--p) * -80px));
-  will-change: transform, letter-spacing;
+  transform: translateY(calc(var(--leave, 0) * -6vh));
+  will-change: transform;
 }
 
 .hero-line {
@@ -458,22 +477,24 @@ button:focus-visible {
 .assembly-word {
   display: inline-block;
   opacity: 0;
-  filter: blur(15px);
+  filter: blur(var(--assembly-blur, 15px));
   transform: translate3d(var(--x, 0), var(--y, 0), var(--z, 0)) rotate(var(--r, 0deg));
   animation: assembly 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
   animation-delay: calc(var(--idx) * 0.06s + 0.3s);
-  will-change: opacity, filter, transform;
 }
 
+/* Ends on none rather than translate3d(0)/blur(0): the forwards fill would
+   otherwise keep every word on its own GPU layer for the life of the page.
+   The browser still promotes them while the animation runs. */
 @keyframes assembly {
   0% {
     opacity: 0;
-    filter: blur(15px);
+    filter: blur(var(--assembly-blur, 15px));
   }
   100% {
     opacity: 1;
-    filter: blur(0);
-    transform: translate3d(0, 0, 0) rotate(0deg);
+    filter: none;
+    transform: none;
   }
 }
 
@@ -483,6 +504,32 @@ button:focus-visible {
 .hero-line-1 .assembly-word:nth-child(3) { --x: -40px; --y: -100px; --z: 400px; --r: 25deg; }
 .hero-line-1 .assembly-word:nth-child(4) { --x: 60px; --y: 80px; --z: 150px; --r: -20deg; }
 .hero-line-1 .assembly-word:nth-child(5) { --x: -100px; --y: -20px; --z: 250px; --r: 12deg; }
+
+/* Eyebrow and support lines rise in around the title assembly. */
+.hero-rise {
+  opacity: 0;
+  transform: translateY(0.9em);
+  animation: hero-rise 0.9s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  animation-delay: var(--rise-delay, 0s);
+}
+.hero-eyebrow.hero-rise { --rise-delay: 0.15s; }
+.hero-support .hero-rise:nth-child(1) { --rise-delay: 0.7s; }
+.hero-support .hero-rise:nth-child(2) { --rise-delay: 0.82s; }
+
+@keyframes hero-rise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hold the entrance until the loader lifts (Loader adds .intro-ready), so
+   it plays in view instead of finishing behind the loading screen. */
+html:not(.intro-ready) .assembly-word,
+html:not(.intro-ready) .hero-rise,
+html:not(.intro-ready) .scroll-indicator.reveal-delayed {
+  animation-play-state: paused;
+}
 
 .hero-support {
   margin: 1.1rem 0 0;
@@ -588,6 +635,13 @@ button:focus-visible {
     line-height: 0.86;
     letter-spacing: -0.075em;
     transform: none;
+    will-change: auto;
+  }
+
+  /* A full-strength blur over this much glyph area costs phones frames
+     right as the scene starts drawing; a lighter one reads the same. */
+  .assembly-word {
+    --assembly-blur: 6px;
   }
 
   .mobile-title-break {
@@ -704,9 +758,12 @@ button:focus-visible {
 
 /* ============================================================
    Journey terminal — retro data terminal overlay
-   A gunmetal bezel around a curved phosphor screen. --phosphor
+   A glass frame (same family as the header pills and CTAs, but
+   tinted by the stop) around a curved phosphor screen. --phosphor
    is set per stop (planet colour); --content fades the screen
    text between stops while the frame and header label stay up.
+   The root stays at full opacity with no will-change: either
+   would make it the backdrop root and blank the glass blur.
    ============================================================ */
 .journey-terminal {
   position: fixed;
@@ -717,7 +774,6 @@ button:focus-visible {
   justify-content: flex-start;
   padding: 5.5rem var(--pad) 3rem;
   pointer-events: none;
-  will-change: transform, opacity;
 }
 
 .journey-terminal[data-hidden="true"] {
@@ -728,33 +784,32 @@ button:focus-visible {
   --phosphor: #cdf757;
   position: relative;
   width: min(32rem, 40vw);
-  padding: 0.9rem 0.9rem 0.55rem;
-  border-radius: 20px 20px 16px 16px;
-  background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 38%),
-    linear-gradient(180deg, #2a2d33 0%, #1a1c21 55%, #121317 100%);
+  padding: 0.75rem 0.75rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 35%, transparent);
+  border-radius: var(--glass-radius);
+  background: var(--glass-panel-bg-deep);
+  backdrop-filter: var(--glass-blur-xxl);
+  -webkit-backdrop-filter: var(--glass-blur-xxl);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 18px 50px rgba(0, 0, 0, 0.55),
-    0 0 60px color-mix(in srgb, var(--phosphor) 10%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 0 0 1px color-mix(in srgb, var(--phosphor) 12%, transparent),
+    0 0 22px color-mix(in srgb, var(--phosphor) 18%, transparent),
+    0 18px 50px rgba(0, 0, 0, 0.45);
+  will-change: transform, opacity;
 }
 
-/* Corner screws */
-.terminal-bezel::before,
-.terminal-bezel::after {
+/* Static glass sheen, the shared one minus the drift (this frame is up for
+   the whole journey; a moving layer over it would repaint every frame). */
+.terminal-bezel::before {
   content: "";
   position: absolute;
-  top: 0.32rem;
-  width: 0.34rem;
-  height: 0.34rem;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #8a8f99, #3a3d44 60%, #1b1d22);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(140% 70% at 15% 0%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 30%, transparent 55%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, transparent 40%, color-mix(in srgb, var(--phosphor) 6%, transparent) 100%);
 }
-.terminal-bezel::before { left: 0.4rem; }
-.terminal-bezel::after { right: 0.4rem; }
 
 .terminal-screen {
   --content: 1;
@@ -773,11 +828,11 @@ button:focus-visible {
     0 0 8px color-mix(in srgb, var(--phosphor) 55%, transparent);
   background:
     radial-gradient(ellipse 120% 90% at 50% 45%,
-      color-mix(in srgb, var(--phosphor) 9%, #05080a) 0%,
-      #040607 75%);
+      color-mix(in srgb, var(--phosphor) 9%, rgba(5, 8, 10, 0.86)) 0%,
+      rgba(4, 6, 7, 0.9) 75%);
   box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.85),
-    inset 0 0 28px rgba(0, 0, 0, 0.9),
+    inset 0 0 0 1px color-mix(in srgb, var(--phosphor) 22%, transparent),
+    inset 0 0 28px rgba(0, 0, 0, 0.85),
     inset 0 0 70px color-mix(in srgb, var(--phosphor) 8%, transparent);
   cursor: default;
 }
@@ -1019,6 +1074,7 @@ button:focus-visible {
 }
 
 .terminal-plate {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1040,6 +1096,245 @@ button:focus-visible {
   background: var(--phosphor);
   box-shadow: 0 0 6px var(--phosphor);
   animation: terminal-blink 2.4s steps(1, end) infinite;
+}
+
+/* Stop selector in the plate: one segment per stop, filled (--fill, 0..1,
+   set per frame by JourneyNav) as the camera arrives, so it sweeps along
+   mid-flight. Takes over from the old fixed rail on the right. */
+.terminal-nav {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.terminal-nav-track {
+  position: relative;
+  display: flex;
+  flex: 1;
+  gap: 3px;
+}
+
+.terminal-nav-seg {
+  --fill: 0;
+  flex: 1;
+  height: 1.1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.terminal-nav-seg::before {
+  content: "";
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, var(--phosphor) calc(var(--fill) * 100%), rgba(255, 255, 255, 0.14) 0);
+  transition: height 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.terminal-nav-seg:hover::before,
+.terminal-nav-seg:focus-visible::before {
+  height: 5px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--phosphor) 70%, transparent);
+}
+.terminal-nav-seg[data-state="active"]::before {
+  height: 5px;
+  box-shadow:
+    0 0 6px var(--phosphor),
+    0 0 14px color-mix(in srgb, var(--phosphor) 45%, transparent);
+}
+.terminal-nav-seg:focus-visible {
+  outline: 1px solid var(--phosphor);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+.terminal-nav-count {
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--phosphor) 70%, rgba(214, 220, 230, 0.6));
+}
+
+/* Which stop a segment goes to, hung just under the frame */
+.terminal-nav-tip {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: var(--at);
+  translate: -50% 0;
+  padding: 0.15rem 0.45rem 0.05rem;
+  background: var(--phosphor);
+  color: #05080a;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--phosphor) 55%, transparent);
+  animation: terminal-flicker 0.24s steps(2, end) 1;
+}
+.terminal-nav-tip[data-align="start"] { translate: -0.6rem 0; }
+.terminal-nav-tip[data-align="end"] { translate: calc(-100% + 0.6rem) 0; }
+
+/* A tap jumps straight away; a label left behind by focus would just linger */
+@media (hover: none) {
+  .terminal-nav-tip { display: none; }
+}
+
+/* ============================================================
+   Journey finale — the core stop
+   data-finale: centred along the bottom, wider, under the core.
+   data-complete: the systems check has finished printing; the
+   stamp, the all-colour bar, the summary and the launch button
+   come in, in that order.
+   ============================================================ */
+.journey-terminal[data-finale] {
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2.5vh;
+}
+.journey-terminal[data-finale] .terminal-bezel {
+  width: min(44rem, 70vw);
+}
+.journey-terminal[data-finale] .terminal-screen {
+  min-height: 0;
+  font-size: 1.3rem;
+}
+
+/* Systems check: three columns of [OK] readouts, each in its planet colour */
+.terminal-line-check {
+  display: inline-block;
+  width: calc(100% / 3);
+  color: var(--phosphor);
+  text-shadow:
+    0 0 1px color-mix(in srgb, var(--phosphor) 90%, white),
+    0 0 8px color-mix(in srgb, var(--phosphor) 55%, transparent);
+  font-size: 0.9em;
+  letter-spacing: 0.04em;
+  vertical-align: top;
+}
+.terminal-line-check + .terminal-line-check { margin-top: 0.1rem; }
+
+.terminal-stamp {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.9rem;
+  z-index: 4;
+  display: none;
+  padding: 0.1rem 0.55rem 0;
+  border: 2px double var(--phosphor);
+  color: var(--phosphor);
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(4, 6, 7, 0.85);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--phosphor) 45%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--phosphor) 25%, transparent);
+  rotate: -3deg;
+  opacity: var(--content);
+}
+.journey-terminal[data-complete] .terminal-stamp {
+  display: block;
+  animation: terminal-stamp 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.journey-terminal[data-complete] .terminal-sysid { visibility: hidden; }
+
+@keyframes terminal-stamp {
+  0% { opacity: 0; scale: 1.7; filter: brightness(2); }
+  60% { opacity: 1; scale: 0.96; }
+  100% { opacity: var(--content); scale: 1; filter: none; }
+}
+
+.terminal-summary {
+  position: relative;
+  z-index: 1;
+  display: none;
+  margin-top: 0.75rem;
+  font-size: 0.82em;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--phosphor) 60%, rgba(214, 220, 230, 0.7));
+  opacity: calc(var(--content) * 0.8);
+}
+.journey-terminal[data-complete] .terminal-summary {
+  display: block;
+  animation: terminal-flicker 0.3s steps(2, end) 0.25s both;
+}
+
+/* Launch button: rises out of the frame between the screen and the plate.
+   No backdrop-filter of its own, the bezel's blur already sits behind it. */
+.terminal-launch {
+  display: none;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.45s;
+}
+.journey-terminal[data-finale] .terminal-launch { display: grid; }
+.journey-terminal[data-complete] .terminal-launch { grid-template-rows: 1fr; }
+
+.terminal-launch-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.terminal-cta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.85rem 1.6rem;
+  border: 1px solid rgba(205, 247, 87, 0.45);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(205, 247, 87, 0.08) 100%),
+    rgba(205, 247, 87, 0.1);
+  color: var(--ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  translate: 0 0.8rem;
+  transition:
+    opacity 0.45s ease 0.6s,
+    translate 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.journey-terminal[data-complete] .terminal-cta {
+  opacity: var(--content);
+  translate: 0 0;
+  animation: plasma-breathe 4.5s ease-in-out 1.2s infinite;
+}
+.terminal-cta span { transition: translate 0.2s ease; }
+.terminal-cta:hover,
+.terminal-cta:focus-visible {
+  background-color: rgba(205, 247, 87, 0.22);
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(205, 247, 87, 0.5),
+    0 0 26px rgba(205, 247, 87, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.terminal-cta:hover span,
+.terminal-cta:focus-visible span { translate: 0.25rem 0; }
+
+/* The whole journey in one bar: every segment in its own stop's colour */
+.journey-terminal[data-complete] .terminal-nav-seg::before {
+  height: 5px;
+  background: var(--seg);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--seg) 70%, transparent);
+  animation: terminal-nav-light 0.45s ease calc(var(--i) * 55ms) both;
+}
+
+@keyframes terminal-nav-light {
+  0% { opacity: 0.25; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.9); }
+  100% { opacity: 1; filter: none; }
 }
 
 @keyframes terminal-blink {
@@ -1068,16 +1363,14 @@ button:focus-visible {
   .journey-terminal {
     align-items: flex-end;
     justify-content: center;
-    padding: 0 3.1rem 4vh 0.9rem;
+    padding: 0 0.9rem 4vh;
   }
   .terminal-bezel {
     width: 100%;
     max-width: 30rem;
-    padding: 0.6rem 0.6rem 0.4rem;
-    border-radius: 16px 16px 12px 12px;
+    padding: 0.55rem 0.55rem 0.35rem;
+    border-radius: 16px;
   }
-  .terminal-bezel::before,
-  .terminal-bezel::after { top: 0.2rem; width: 0.26rem; height: 0.26rem; }
   .terminal-screen {
     min-height: 0;
     padding: 0.7rem 0.85rem 0.8rem;
@@ -1089,12 +1382,36 @@ button:focus-visible {
   .terminal-menu { gap: 0.1rem 0.8rem; margin-top: 0.6rem; }
   .terminal-input { margin-top: 0.45rem; }
   .terminal-plate { margin-top: 0.3rem; font-size: 0.72rem; }
+  /* Taller hit area for thumbs; the visible bar stays thin */
+  .terminal-nav-seg { height: 1.6rem; }
+
+  .journey-terminal[data-finale] { padding-bottom: 2vh; }
+  .journey-terminal[data-finale] .terminal-bezel { width: 100%; }
+  .journey-terminal[data-finale] .terminal-screen { font-size: 1.08rem; }
+  .terminal-line-check { width: 50%; }
+  .terminal-stamp { top: 0.45rem; right: 0.6rem; font-size: 0.95rem; }
+  .terminal-cta { margin-top: 0.5rem; padding: 0.75rem 1.2rem; font-size: 1rem; }
+
+  /* The screen grows a line at a time as it prints (bottom-anchored, so it
+     rises towards the planet) rather than opening at full height and empty.
+     Each line still reserves its own wrap, so text never reflows mid-line. */
+  .journey-terminal:not(.eva-terminal) .terminal-line.is-pending {
+    display: none;
+  }
+  .journey-terminal:not(.eva-terminal)[data-phase="boot"] .terminal-options,
+  .journey-terminal:not(.eva-terminal)[data-phase="typing"] .terminal-options {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .terminal-roll,
   .terminal-cursor,
   .terminal-led,
+  .terminal-stamp,
+  .terminal-summary,
+  .terminal-cta,
+  .terminal-nav-seg::before,
   .terminal-option.is-armed,
   .terminal-hint.is-visible,
   .terminal-screen.is-flicker,
@@ -1131,6 +1448,7 @@ button:focus-visible {
   .hero-support,
   .hero-subtitle,
   .assembly-word,
+  .hero-rise,
   .scroll-indicator.reveal-delayed,
   .plasma-text {
     animation: none !important;
@@ -1732,9 +2050,7 @@ button.service-cta-button.service-cta-terminal:focus-visible {
    ============================================================ */
 .consent-banner {
   position: fixed;
-  /* Sits just inside the journey rail (timeline offset + 28px rail + gap),
-     so short viewports don't stack it over the last stops. */
-  right: calc(clamp(1.25rem, 2.5vw, 2.75rem) + 28px + 1rem);
+  right: clamp(1.25rem, 2.5vw, 2.75rem);
   bottom: 1.25rem;
   z-index: 30;
   width: min(23rem, calc(100vw - 2rem));
@@ -2105,335 +2421,6 @@ button.service-cta-button {
   color: var(--emerald);
 }
 
-/* ============================================================
-   Journey Timeline Navigation — Sci-Fi HUD Spine
-   ============================================================ */
-.journey-timeline {
-  position: fixed;
-  right: clamp(1.25rem, 2.5vw, 2.75rem);
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 25;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-  user-select: none;
-}
-
-.journey-timeline-rail {
-  position: relative;
-  width: 28px;
-  height: clamp(380px, 58vh, 520px);
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-}
-
-/* Inactive background track line */
-.journey-timeline-track {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 1px;
-}
-
-/* Active Glowing Emerald fill track line */
-.journey-timeline-fill {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  height: 0%;
-  background: var(--emerald);
-  border-radius: 1px;
-  box-shadow:
-    0 0 6px #cdf757,
-    0 0 14px rgba(205, 247, 87, 0.7),
-    0 0 24px rgba(205, 247, 87, 0.35);
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Real-time seeker reticle */
-.journey-timeline-seeker {
-  position: absolute;
-  left: 50%;
-  top: 0%;
-  transform: translate(-50%, -50%);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow:
-    0 0 6px #ffffff,
-    0 0 12px var(--emerald),
-    0 0 20px rgba(205, 247, 87, 0.8);
-  pointer-events: none;
-  z-index: 3;
-  transition: transform 0.15s ease-out;
-}
-
-/* Nodes container */
-.journey-timeline-nodes {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.journey-node-wrapper {
-  position: absolute;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
-}
-
-.journey-node-btn {
-  background: none;
-  border: none;
-  padding: 6px;
-  margin: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  outline: none;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.journey-node-btn:focus-visible {
-  outline: 2px solid var(--emerald);
-  outline-offset: 4px;
-  border-radius: 999px;
-}
-
-.journey-node-btn:hover {
-  transform: scale(1.2);
-}
-
-/* Vertical notch tick through the center of the ring (Image #1 reference) */
-.journey-node-tick {
-  position: absolute;
-  width: 2px;
-  height: 22px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 1;
-  background: transparent;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.journey-node-btn[data-state="passed"] .journey-node-tick {
-  background: rgba(205, 247, 87, 0.4);
-}
-
-.journey-node-btn[data-state="active"] .journey-node-tick,
-.journey-node-btn:hover .journey-node-tick {
-  background: var(--emerald);
-  box-shadow: 0 0 8px rgba(205, 247, 87, 0.9);
-}
-
-/* Outer ring */
-.journey-node-ring {
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 2;
-  border: 1.5px solid rgba(255, 255, 255, 0.28);
-  background: rgba(1, 2, 10, 0.92);
-  transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
-}
-
-/* Inner dot */
-.journey-node-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
-  transition: background-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
-}
-
-/* Radar pulse animation for active node */
-.journey-node-ping {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 1.5px solid var(--emerald);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* State: PASSED */
-.journey-node-btn[data-state="passed"] .journey-node-ring {
-  border-color: rgba(205, 247, 87, 0.7);
-  background: rgba(1, 2, 10, 0.95);
-  box-shadow: 0 0 10px rgba(205, 247, 87, 0.35);
-}
-
-.journey-node-btn[data-state="passed"] .journey-node-dot {
-  background: var(--emerald);
-  box-shadow: 0 0 6px #cdf757;
-}
-
-/* State: ACTIVE */
-.journey-node-btn[data-state="active"] .journey-node-ring {
-  border-color: var(--emerald);
-  border-width: 2px;
-  background: rgba(12, 14, 24, 0.98);
-  box-shadow:
-    0 0 14px rgba(205, 247, 87, 0.85),
-    inset 0 0 6px rgba(205, 247, 87, 0.45);
-  transform: scale(1.15);
-}
-
-.journey-node-btn[data-state="active"] .journey-node-dot {
-  background: #ffffff;
-  box-shadow:
-    0 0 6px #ffffff,
-    0 0 10px var(--emerald);
-}
-
-.journey-node-btn[data-state="active"] .journey-node-ping {
-  animation: hud-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes hud-ping {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.9;
-  }
-  75%, 100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-}
-
-/* Hover telemetry HUD card */
-.journey-hud-card {
-  position: absolute;
-  overflow: hidden;
-  right: calc(100% + 16px);
-  transform: translateY(-50%);
-  pointer-events: none;
-  z-index: 30;
-  width: max-content;
-  max-width: 250px;
-  background: var(--glass-panel-bg-deep);
-  backdrop-filter: var(--glass-blur-xxl);
-  -webkit-backdrop-filter: var(--glass-blur-xxl);
-  border-radius: 12px;
-  padding: 0.75rem 1rem;
-  animation: hud-card-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes hud-card-in {
-  from {
-    opacity: 0;
-    transform: translate(6px, -50%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(0, -50%);
-  }
-}
-
-.journey-hud-header {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.journey-hud-code {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--emerald);
-  text-transform: uppercase;
-}
-
-.journey-hud-status {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.65rem;
-  color: rgba(238, 243, 239, 0.45);
-}
-
-.journey-hud-title {
-  position: relative;
-  z-index: 1;
-  margin-top: 0.25rem;
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-}
-
-.journey-hud-tagline {
-  position: relative;
-  z-index: 1;
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--ink-muted);
-  line-height: 1.35;
-}
-
-.journey-hud-prompt {
-  position: relative;
-  z-index: 1;
-  margin-top: 0.45rem;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.68rem;
-  color: var(--emerald);
-  letter-spacing: 0.02em;
-}
-
-/* Hide on mobile devices to preserve touch gestures and content area */
-@media (max-width: 768px) {
-  .journey-timeline {
-    right: 0.6rem;
-  }
-  .journey-timeline-rail {
-    width: 22px;
-    height: clamp(260px, 46vh, 380px);
-  }
-  .journey-node-ring {
-    transform: scale(0.85);
-  }
-  /* No usable hover on touch — the tap-to-jump still works via onClick,
-     but the HUD tooltip card has no good trigger, so hide it here */
-  .journey-hud-card {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .journey-timeline-seeker {
-    transition: none;
-  }
-  .journey-node-btn[data-state="active"] .journey-node-ping {
-    animation: none;
-  }
-  .journey-hud-card {
-    animation: none;
-  }
-}
-
 @property --text-effect-angle {
   syntax: "<angle>";
   inherits: false;
@@ -2774,7 +2761,6 @@ html.planet-hover * {
   .eva-fly-list { max-height: 55vh; overflow-y: auto; }
   /* The docked terminal takes the bottom of the screen */
   .eva-ui.has-focus .eva-fly { display: none; }
-  .eva-terminal { padding-right: 0.9rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

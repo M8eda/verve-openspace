@@ -4,12 +4,15 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { TERMINAL_STOPS, type TerminalLine } from "@/data/terminals";
 import { pagerPosition, pagerState } from "@/lib/journeyPager";
+import JourneyNav from "@/components/JourneyNav";
 import { subscribeFrame } from "@/lib/frameLoop";
 import { isCoarsePointer, prefersReducedMotion } from "@/lib/device";
 import { isFreeMode } from "@/lib/freeMode";
-import { isContactOpen } from "@/lib/contactPanel";
+import { isContactOpen, openContactPanel } from "@/lib/contactPanel";
 import { planetHover } from "@/lib/planetFocus";
 import { runTerminalAction } from "@/lib/terminalActions";
+import { playGlassClick } from "@/lib/audio";
+import { finale, finaleLayout, journeyLog, journeySummary, resetFinale } from "@/lib/finale";
 import {
   TerminalTyper,
   isPlainClick,
@@ -18,7 +21,9 @@ import {
   type RenderedOptions,
 } from "@/lib/terminalTyper";
 
-const CORE_PARAM = TERMINAL_STOPS[TERMINAL_STOPS.length - 1].param;
+const CORE_STOP = TERMINAL_STOPS.length - 1;
+const CORE_PARAM = TERMINAL_STOPS[CORE_STOP].param;
+const FINALE_CHECKS = TERMINAL_STOPS[CORE_STOP].lines.filter((l) => l.kind === "check").length;
 
 /** Distance (in pages) over which a stop's screen content fades out. */
 const CONTENT_WINDOW = 0.42;
@@ -37,12 +42,13 @@ export default function JourneyCaptions() {
   const screenRef = useRef<HTMLDivElement>(null);
   const tagRef = useRef<HTMLSpanElement>(null);
   const sysRef = useRef<HTMLSpanElement>(null);
-  const plateRef = useRef<HTMLSpanElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLSpanElement>(null);
   const optionsRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const srRef = useRef<HTMLParagraphElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const ctaRef = useRef<HTMLButtonElement>(null);
   const skipRef = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -69,8 +75,23 @@ export default function JourneyCaptions() {
     let idleMs = 0;
     let hintShown = false;
     let armed = false;
+    /** Index of the first systems-check line on the current screen, or -1. */
+    let checkStart = -1;
+    let finaleLayoutOn = false;
 
     const navigate = (href: string) => router.push(href);
+
+    // The finale's last beat: the stamp, the all-colour progress bar, the
+    // journey summary and the launch button, all keyed off data-complete.
+    const setComplete = (complete: boolean) => {
+      const root = rootRef.current;
+      if (!root || root.hasAttribute("data-complete") === complete) return;
+      root.toggleAttribute("data-complete", complete);
+      if (ctaRef.current) ctaRef.current.tabIndex = complete ? 0 : -1;
+      if (!complete) return;
+      if (!journeyLog.finishedAt) journeyLog.finishedAt = performance.now();
+      if (summaryRef.current) summaryRef.current.textContent = journeySummary();
+    };
 
     const typer = new TerminalTyper(
       body,
@@ -81,6 +102,7 @@ export default function JourneyCaptions() {
           seen.add(stopIdx);
           optionsEl.style.visibility = "visible";
         }
+        setComplete(phase === "done" && stopIdx === CORE_STOP);
       },
       () => rendered.cursorHost,
     );
@@ -121,7 +143,6 @@ export default function JourneyCaptions() {
 
       if (tagRef.current) tagRef.current.textContent = stop.tag;
       if (sysRef.current) sysRef.current.textContent = stop.sysId;
-      if (plateRef.current) plateRef.current.textContent = `Verve data terminal · ${stop.sysId}`;
       bezelRef.current?.style.setProperty("--phosphor", stop.color);
       if (tagRef.current && !reduceMotion) restartAnimation(tagRef.current, "is-flicker");
 
@@ -144,6 +165,9 @@ export default function JourneyCaptions() {
       }
 
       const instant = reduceMotion || seen.has(idx);
+      checkStart = visibleLines.findIndex((l) => l.kind === "check");
+      resetFinale();
+      if (idx === CORE_STOP) finale.instant = instant;
       typer.load(visibleLines, instant);
       if (instant && !reduceMotion && screenRef.current) {
         restartAnimation(screenRef.current, "is-flicker");
@@ -188,7 +212,8 @@ export default function JourneyCaptions() {
 
     const unsubscribe = subscribeFrame((_time, delta) => {
       const root = rootRef.current;
-      if (!root) return;
+      const bezel = bezelRef.current;
+      if (!root || !bezel) return;
 
       const p = pagerPosition();
       let best = 0;
@@ -215,27 +240,45 @@ export default function JourneyCaptions() {
           root.style.display = "none";
           root.setAttribute("data-hidden", "true");
           stopIdx = -1;
+          resetFinale();
         } else {
           root.style.display = "";
           root.removeAttribute("data-hidden");
         }
       }
       if (nextHidden) return;
+      if (!journeyLog.startedAt) journeyLog.startedAt = performance.now();
 
       if (best !== stopIdx) build(best);
 
-      const nextOpacity = frame.toFixed(3);
+      // On the way into the core the frame dips out mid-flight (the text is
+      // already gone by then) and comes back in the finale layout: centred
+      // along the bottom, under the core.
+      const layout = finaleLayout();
+      const nextFinaleOn = layout >= 0.5;
+      if (nextFinaleOn !== finaleLayoutOn) {
+        finaleLayoutOn = nextFinaleOn;
+        root.toggleAttribute("data-finale", nextFinaleOn);
+      }
+      const shown = frame * Math.abs(1 - 2 * layout);
+
+      // Faded on the bezel, not the root: an ancestor below full opacity
+      // would cut the glass blur off from the scene behind it.
+      const nextOpacity = shown.toFixed(3);
       if (nextOpacity !== lastOpacity) {
-        root.style.opacity = nextOpacity;
+        bezel.style.opacity = nextOpacity;
         lastOpacity = nextOpacity;
       }
-      const nextTransform = `translateY(${((1 - frame) * -28).toFixed(1)}px)`;
+      const nextTransform = `translateY(${((1 - shown) * -28).toFixed(1)}px)`;
       if (nextTransform !== lastTransform) {
-        root.style.transform = nextTransform;
+        bezel.style.transform = nextTransform;
         lastTransform = nextTransform;
       }
       const nextContent = content.toFixed(3);
       if (nextContent !== lastContent) {
+        // The bezel carries it for the launch button under the screen; the
+        // screen declares its own, so it gets set there too.
+        bezel.style.setProperty("--content", nextContent);
         screenRef.current?.style.setProperty("--content", nextContent);
         lastContent = nextContent;
       }
@@ -267,9 +310,19 @@ export default function JourneyCaptions() {
       }
 
       announce(best);
+      if (stop.bodyId && best !== CORE_STOP) journeyLog.scanned.add(stop.bodyId);
       // Real elapsed time, so slow frames don't slow the typing; capped so
       // a backgrounded tab doesn't dump a whole screen in one frame.
       typer.advance(Math.min(delta, 250));
+
+      // The scene follows the finale's typing: the dock command sets off the
+      // shockwave, and each [OK] lights that planet's orbit.
+      if (best === CORE_STOP) {
+        finale.elapsed += Math.min(delta, 250);
+        finale.docked = typer.linesDone >= 1;
+        finale.lit =
+          checkStart < 0 ? 0 : Math.max(0, Math.min(FINALE_CHECKS, typer.linesDone - checkStart));
+      }
 
       if (typer.phase === "done" && stop.hint) {
         idleMs += Math.min(delta, 250);
@@ -279,6 +332,7 @@ export default function JourneyCaptions() {
 
     return () => {
       unsubscribe();
+      resetFinale();
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("wheel", resetIdle);
       window.removeEventListener("touchstart", resetIdle);
@@ -286,23 +340,43 @@ export default function JourneyCaptions() {
   }, [router]);
 
   return (
-    <div ref={rootRef} className="journey-terminal" data-hidden="true" data-phase="done" style={{ display: "none", opacity: 0 }}>
-      <div ref={bezelRef} className="terminal-bezel">
+    <div ref={rootRef} className="journey-terminal" data-hidden="true" data-phase="done" style={{ display: "none" }}>
+      <div ref={bezelRef} className="terminal-bezel" style={{ opacity: 0 }}>
         <div ref={screenRef} className="terminal-screen" onClick={() => skipRef.current()}>
           <span className="terminal-roll" aria-hidden="true" />
           <div className="terminal-header">
             <span ref={tagRef} className="terminal-tag" />
             <span ref={sysRef} className="terminal-sysid" />
           </div>
+          <span className="terminal-stamp" aria-hidden="true">
+            Mission complete
+          </span>
           <div ref={bodyRef} className="terminal-body" aria-hidden="true" />
+          <div ref={summaryRef} className="terminal-summary" aria-hidden="true" />
           <div ref={optionsRef} className="terminal-options" />
           <div ref={hintRef} className="terminal-hint" aria-hidden="true" />
           <span ref={cursorRef} className="terminal-cursor" aria-hidden="true" />
           <p ref={srRef} className="sr-only" aria-live="polite" />
         </div>
-        <div className="terminal-plate" aria-hidden="true">
-          <span className="terminal-led" />
-          <span ref={plateRef} />
+        <div className="terminal-launch">
+          <div className="terminal-launch-inner">
+            <button
+              ref={ctaRef}
+              type="button"
+              className="terminal-cta"
+              tabIndex={-1}
+              onClick={() => {
+                playGlassClick();
+                openContactPanel("journey_finale");
+              }}
+            >
+              Launch your mission <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+        <div className="terminal-plate">
+          <span className="terminal-led" aria-hidden="true" />
+          <JourneyNav />
         </div>
       </div>
     </div>

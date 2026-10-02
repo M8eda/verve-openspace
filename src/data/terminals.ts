@@ -1,5 +1,6 @@
 import { services } from "./services";
 import { CORE_ID } from "@/lib/planetFocus";
+import { FINALE_ORDER } from "@/lib/finale";
 
 /**
  * Copy for the journey terminal: one screen per pager stop (system
@@ -12,12 +13,15 @@ import { CORE_ID } from "@/lib/planetFocus";
  * - hi:     bright headline line
  * - out:    regular output
  * - prompt: dim closing note
+ * - check:  one systems-check readout, printed in its planet's `color`
  */
-export type TerminalLineKind = "cmd" | "meta" | "hi" | "out" | "prompt";
+export type TerminalLineKind = "cmd" | "meta" | "hi" | "out" | "prompt" | "check";
 
 export type TerminalLine = {
   kind: TerminalLineKind;
   text: string;
+  /** Overrides the screen's phosphor colour for this line. */
+  color?: string;
 };
 
 /** What choosing a terminal option does. */
@@ -133,13 +137,21 @@ export const TERMINAL_STOPS: TerminalStop[] = [
     sysId: `SYS ID:${pad(coreIndex)}`,
     bodyId: CORE_ID,
     color: BRAND,
+    // The grand finale. A systems check counts the planets in from the
+    // outermost orbit, and each [OK] lights that orbit in the scene.
+    // JourneyCaptions appends the visitor's own journey summary.
     lines: [
       { kind: "cmd", text: "dock --core" },
-      { kind: "meta", text: "ALL ORBITS CONVERGE HERE" },
-      { kind: "hi", text: "Verve core online." },
+      { kind: "meta", text: `SYSTEMS CHECK · ${services.length} PLANETS · 1 CORE` },
+      ...FINALE_ORDER.map((s) => ({
+        kind: "check" as const,
+        text: `[OK] ${pad(s.index)} ${s.shortName.toUpperCase()}`,
+        color: s.visual.color,
+      })),
+      { kind: "hi", text: "All orbits converge here." },
       {
         kind: "out",
-        text: "Every planet connects back to this point. Mission control is ready when you are, or take the controls and roam free.",
+        text: "Every planet you just passed is one system, run from this core. Tell us where you're headed and we'll plot the course.",
       },
     ],
     options: [

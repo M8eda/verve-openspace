@@ -25,7 +25,7 @@ const STOP_WINDOW = 0.42;
 
 /** Anything the visitor can already click on its own wins over the scene. */
 const UI_SELECTOR =
-  "a, button, input, textarea, select, label, [role='dialog'], .terminal-bezel, .journey-timeline, .site-header, .eva-ui";
+  "a, button, input, textarea, select, label, [role='dialog'], .terminal-bezel, .site-header, .eva-ui";
 
 function isOverUi(target: EventTarget | null): boolean {
   return target instanceof Element && !!target.closest(UI_SELECTOR);

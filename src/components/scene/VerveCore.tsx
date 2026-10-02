@@ -15,6 +15,7 @@ import {
   coreVertex,
 } from "@/shaders/core";
 import { pagerPosition, PAGE_COUNT } from "@/lib/journeyPager";
+import { finale } from "@/lib/finale";
 
 const ARRIVAL_WINDOW = 1.2;
 
@@ -246,14 +247,16 @@ export default function VerveCore({ reduceMotion = false }: { reduceMotion?: boo
       ? target
       : THREE.MathUtils.damp(arrival.current, target, 3, Math.min(dt, 0.05));
 
-    const intensity = 1.0 + arrival.current * 0.28;
+    // The finale's docking pulse (CoreFinale) rides on top of the arrival.
+    const pulse = finale.pulse;
+    const intensity = 1.0 + arrival.current * 0.28 + pulse * 0.45;
     coreMat.uniforms.uIntensity.value = intensity;
-    haloMat.uniforms.uStrength.value = 0.72 + arrival.current * 0.42;
-    raysMat.uniforms.uIntensity.value = 0.8 + arrival.current * 0.35;
-    flaresMat.uniforms.uIntensity.value = 0.85 + arrival.current * 0.42;
+    haloMat.uniforms.uStrength.value = 0.72 + arrival.current * 0.42 + pulse * 0.6;
+    raysMat.uniforms.uIntensity.value = 0.8 + arrival.current * 0.35 + pulse * 0.5;
+    flaresMat.uniforms.uIntensity.value = 0.85 + arrival.current * 0.42 + pulse * 0.5;
 
     if (groupRef.current) {
-      const s = 1 + arrival.current * 0.18;
+      const s = 1 + arrival.current * 0.18 + pulse * 0.06;
       groupRef.current.scale.setScalar(s);
       groupRef.current.rotation.y += dt * 0.025;
     }

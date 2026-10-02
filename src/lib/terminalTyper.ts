@@ -9,6 +9,7 @@ const CHAR_MS: Record<TerminalLineKind, number> = {
   hi: 12,
   out: 10,
   prompt: 10,
+  check: 9,
 };
 /** Pause after finishing a line, before the next one starts. */
 const LINE_PAUSE_MS: Record<TerminalLineKind, number> = {
@@ -17,6 +18,8 @@ const LINE_PAUSE_MS: Record<TerminalLineKind, number> = {
   hi: 140,
   out: 140,
   prompt: 0,
+  // Long enough that each [OK] lands as its own beat in the scene.
+  check: 110,
 };
 
 const PREFIX: Record<TerminalLineKind, string> = {
@@ -25,11 +28,18 @@ const PREFIX: Record<TerminalLineKind, string> = {
   hi: "",
   out: "",
   prompt: "",
+  check: "",
 };
 
 export type TypePhase = "boot" | "typing" | "done";
 
-type LineEl = { typed: HTMLSpanElement; rest: HTMLSpanElement; text: string; kind: TerminalLineKind };
+type LineEl = {
+  row: HTMLDivElement;
+  typed: HTMLSpanElement;
+  rest: HTMLSpanElement;
+  text: string;
+  kind: TerminalLineKind;
+};
 
 export function restartAnimation(el: HTMLElement, cls: string) {
   el.classList.remove(cls);
@@ -62,16 +72,20 @@ export class TerminalTyper {
   /** Replace the screen with new lines; `instant` skips the typing. */
   load(lines: TerminalLine[], instant: boolean) {
     this.body.replaceChildren();
-    this.lines = lines.map((l) => {
+    this.lines = lines.map((l, i) => {
       const row = document.createElement("div");
       row.className = `terminal-line terminal-line-${l.kind}`;
+      // Lines typing hasn't reached yet. CSS may collapse these so the screen
+      // grows as it prints instead of opening on a mostly empty box.
+      if (i > 0 && !instant) row.classList.add("is-pending");
+      if (l.color) row.style.setProperty("--phosphor", l.color);
       const typed = document.createElement("span");
       const rest = document.createElement("span");
       // The untyped remainder holds its space so the screen never reflows.
       rest.className = "terminal-rest";
       row.append(typed, rest);
       this.body.appendChild(row);
-      const line = { typed, rest, text: PREFIX[l.kind] + l.text, kind: l.kind };
+      const line = { row, typed, rest, text: PREFIX[l.kind] + l.text, kind: l.kind };
       this.render(line, 0);
       return line;
     });
@@ -121,11 +135,17 @@ export class TerminalTyper {
       return;
     }
     this.render(this.lines[this.li], this.ci);
-    if (this.li !== startLine) this.placeCursor();
+    if (this.li !== startLine) {
+      this.lines[this.li].row.classList.remove("is-pending");
+      this.placeCursor();
+    }
   }
 
   finish() {
-    for (const line of this.lines) this.render(line, line.text.length);
+    for (const line of this.lines) {
+      line.row.classList.remove("is-pending");
+      this.render(line, line.text.length);
+    }
     this.li = this.lines.length;
     this.setPhase("done");
     this.placeCursor();
@@ -133,6 +153,11 @@ export class TerminalTyper {
 
   skip() {
     if (this.phase !== "done") this.finish();
+  }
+
+  /** How many lines have printed in full so far. */
+  get linesDone(): number {
+    return this.li;
   }
 
   private setPhase(next: TypePhase) {
