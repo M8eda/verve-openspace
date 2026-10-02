@@ -19,6 +19,10 @@
   </p>
 </div>
 
+![Verve homepage hero with a glowing galaxy and Own your space headline](./docs/screenshot-home.png)
+
+![Verve EVA free-roam mode with service planets and controls](./docs/screenshot-eva.png)
+
 > Own your space.
 
 ## Overview
